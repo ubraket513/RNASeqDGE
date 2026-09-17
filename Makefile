@@ -1,55 +1,34 @@
 CXX ?= g++
 CXXFLAGS ?= -O2 -g
 BUILD ?= build
-PROJECT_FLAGS = -std=c++20 -Wall -Wextra -Wpedantic -DCSV_ENABLE_THREADS=0
-INCLUDES = -Iinclude -isystem third_party/csv-parser -isystem third_party/doctest
+PROJECT_FLAGS := -std=c++20 -Wall -Wextra -Wpedantic -DCSV_ENABLE_THREADS=0
+INCLUDES := -Iinclude -isystem third_party/csv-parser -isystem third_party/doctest
 
-.PHONY: all test check verify-vendor sanitize
+CORE_SOURCES := src/table.cpp src/file_hash.cpp src/manifests.cpp src/counts.cpp src/process.cpp
+CLI_SOURCES := src/main.cpp src/alignment.cpp src/workflow.cpp \
+               src/workflow/config.cpp src/workflow/state.cpp src/workflow/execution.cpp
+TEST_SOURCES := tests/unit/test_table.cpp tests/unit/test_file_hash.cpp \
+                tests/unit/test_manifests.cpp tests/unit/test_counts.cpp tests/unit/test_process.cpp
+CORE_OBJECTS := $(patsubst src/%.cpp,$(BUILD)/%.o,$(CORE_SOURCES))
+CLI_OBJECTS := $(patsubst src/%.cpp,$(BUILD)/%.o,$(CLI_SOURCES))
+TEST_OBJECTS := $(patsubst tests/unit/%.cpp,$(BUILD)/tests/%.o,$(TEST_SOURCES))
+OBJECTS := $(CORE_OBJECTS) $(CLI_OBJECTS) $(TEST_OBJECTS)
+
+.PHONY: all test check verify-vendor sanitize workflow
 all: $(BUILD)/rnaseq
 
-$(BUILD):
-	mkdir -p $@
-
-$(BUILD)/table.o: src/table.cpp | $(BUILD)
+$(BUILD)/%.o: src/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
 
-$(BUILD)/file_hash.o: src/file_hash.cpp | $(BUILD)
+$(BUILD)/tests/%.o: tests/unit/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
 
-$(BUILD)/manifests.o: src/manifests.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/counts.o: src/counts.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/process.o: src/process.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/alignment.o: src/alignment.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/test_process.o: tests/unit/test_process.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/main.o: src/main.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/test_table.o: tests/unit/test_table.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/test_file_hash.o: tests/unit/test_file_hash.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/test_manifests.o: tests/unit/test_manifests.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/test_counts.o: tests/unit/test_counts.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
-
-$(BUILD)/rnaseq: $(BUILD)/workflow.o $(BUILD)/process.o $(BUILD)/alignment.o $(BUILD)/main.o $(BUILD)/table.o $(BUILD)/file_hash.o $(BUILD)/manifests.o $(BUILD)/counts.o
+$(BUILD)/rnaseq: $(CORE_OBJECTS) $(CLI_OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDLIBS) -o $@
 
-$(BUILD)/test_table: $(BUILD)/process.o $(BUILD)/test_process.o $(BUILD)/test_table.o $(BUILD)/test_file_hash.o $(BUILD)/test_manifests.o $(BUILD)/test_counts.o $(BUILD)/table.o $(BUILD)/file_hash.o $(BUILD)/manifests.o $(BUILD)/counts.o
+$(BUILD)/test_table: $(CORE_OBJECTS) $(TEST_OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) $(LDLIBS) -o $@
 
 verify-vendor:
@@ -65,16 +44,12 @@ check: verify-vendor test $(BUILD)/rnaseq
 	bash tests/integration/check_p5_workflow.sh $(BUILD)/rnaseq
 
 sanitize:
-	$(MAKE) BUILD=build/sanitize CXXFLAGS='-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined' LDFLAGS='-fsanitize=address,undefined' check
-
--include $(wildcard $(BUILD)/*.d)
-
-$(BUILD)/workflow.o: src/workflow.cpp | $(BUILD)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PROJECT_FLAGS) $(INCLUDES) -MD -MP -c $< -o $@
+	$(MAKE) BUILD=$(BUILD)/sanitize CXXFLAGS='-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined' LDFLAGS='-fsanitize=address,undefined' check
 
 # Export instead of interpolating user paths into recipe shell code.
 export WORKFLOW_CONFIG
-.PHONY: workflow
 workflow: $(BUILD)/rnaseq
 	@test -n "$$WORKFLOW_CONFIG" || { echo "Set WORKFLOW_CONFIG to a workflow TSV" >&2; exit 2; }
 	$(BUILD)/rnaseq workflow-local "$$WORKFLOW_CONFIG"
+
+-include $(OBJECTS:.o=.d)

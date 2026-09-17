@@ -1,6 +1,6 @@
 # Implementation progress
 
-Updated 2026-09-17. Latest user checkpoint: `2569861` (performance profiling).
+Updated 2026-09-17. Latest user checkpoint: `1d140dd` (C++ migration).
 
 ## Status
 
@@ -17,6 +17,11 @@ were installed after explicit user authorization. Production entry points now
 use the native workflow; no live Slurm jobs were submitted. Published-count checks and a
 reduced real-read workflow have run; whole-study raw-alignment parity is not claimed.
 The pre-existing README changes and untracked docs/Serena metadata were preserved.
+
+The final staging verification gap is closed: an unchanged-source rerun exited 0
+in 2m22.26s; all 15 data files and parent-prefix provenance matched. README now
+records this evidence and links the project MIT license; third-party notices
+remain unchanged.
 
 ## Continuation: dependency installation and implementation
 

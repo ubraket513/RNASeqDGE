@@ -65,8 +65,20 @@ Repository-owned Python and Snakemake files are removed. R/shell replacements
 cover preparation, provenance, fixture generation and integration checks. Retained
 GEO cohort files, thinned reads and local-stage reads/reference/annotation matched
 their original outputs byte-for-byte; comparison summaries matched numerically.
-The local restaging process wrote its complete outputs but subsequently exited
-nonzero after its source was edited while it was running. Its output parity is
-evidence of the generated data, not a clean process exit. Final source parsing and
-focused sampling-provenance regression checks passed. Other helper checks and the
-independent complete compute workflow passed normally.
+The initial local restaging run exited nonzero after a concurrent source edit.
+That verification gap was closed by a clean rerun on 2026-09-17: exit status 0,
+2m22.26s elapsed, maximum RSS 162,208 KiB. SHA-256 checks before and after confirmed
+that both `tools/stage_gse80336_local.R` and `tools/lib_helpers.R` were unchanged.
+No staging implementation changes were needed.
+
+The rerun reused verified cached reference archives and the original six
+50,000-read prefixes without network access. All 15 data files matched the
+original stage byte-for-byte: six FASTQs, FASTA, GTF, genes, annotation, samples,
+runs, references, analysis and contrasts. Parent prefix SHA-256 hashes and record
+counts matched provenance; the chromosome remained 50,818,468 bases with 981 genes.
+Full-source read MD5 verification remains explicitly false because these are
+prefixes, not complete archive downloads.
+
+Evidence: `tests/output/p7-restaging-clean/`, `p7-restaging-clean.log`,
+`p7-restaging-clean.time`, `p7-restaging-clean.exit`,
+`p7-restaging-clean-source.sha256` and `p7-restaging-clean-VERIFIED`.

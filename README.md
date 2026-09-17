@@ -37,6 +37,13 @@ jobs use this payload and `.deps/runtime-r`, not the source staging prefix.
 The R lock contains no Python package. System Python is neither used nor removed.
 Historical P0 locks remain provenance and are not the compute environment.
 
+Audit the deployed prefixes for Python interpreters/libraries and verify the
+native bundle's file hashes and shared-library closure:
+
+```sh
+bash tools/check_python_free_runtime.sh .deps/runtime-r .deps/runtime-tools
+```
+
 HISAT2 invokes its native small-index binaries directly with the upstream wrapper
 marker. This interface accepts uncompressed FASTQ and small `.ht2` indexes;
 compressed reads and large HISAT2 indexes are not supported by this workflow.
@@ -78,6 +85,25 @@ The six-sample, chromosome-22 comparison is a reduced functional check, not a
 whole-genome performance benchmark or reproduction of the report's biological conclusions.
 Live Slurm execution still needs validation on a cluster.
 
+The Python-free six-sample workflow passed with byte-identical merged counts
+and matching scientific tables against the previous HISAT2 run. The full
+36-sample published-count analysis took 92 seconds with one R worker; two- and
+four-worker benchmarks were skipped for insufficient memory headroom, so their
+speedup remains unmeasured.
+
+The data-staging helper also completed a clean rerun from unchanged source in
+2 minutes 22 seconds. All 15 staged data files matched the original stage
+byte-for-byte, and parent-read hashes and sampling provenance passed verification.
+It reused cached reference downloads and six 50,000-read prefixes without network
+access. See [the staging evidence](docs/P7_RUNTIME.md#helper-migration).
+
 The former Python/Snakemake entry points are retired; see
 [legacy recovery](docs/LEGACY_RECOVERY.md). Report sources and historical evidence
 are retained.
+
+## License
+
+Project code is available under the [MIT License](LICENSE).
+Third-party code and tools retain their own licenses and notices in
+[`third_party/`](third_party/) and [`vendor/toolchain/`](vendor/toolchain/).
+Research datasets retain their original terms; the MIT license does not relicense them.
