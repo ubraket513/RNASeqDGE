@@ -1,0 +1,9 @@
+name: rnaseqdge-alignment
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - hisat2=2.2.1
+  - subread=2.0.6
+  - samtools=1.17
+  - star=2.7.10b

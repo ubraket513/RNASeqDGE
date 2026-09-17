@@ -1,0 +1,2 @@
+- No local unit-test/lint/type-check configuration found during inspection. Existing tests are HPC integration smoke tests, with file-existence gates for results and seven plots.
+- A statistical migration needs additional count/sample identity and numerical-result validation; file-existence gates cannot establish equivalence. Do not report README runtime estimates as measured benchmarks.

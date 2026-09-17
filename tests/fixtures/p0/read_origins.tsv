@@ -1,0 +1,7 @@
+read_id	intervals_1based_inclusive	orientation	case
+exon_plus	151-225	+	exonic_gene_A.1
+junction_plus	264-300,501-538	+	spliced_gene_A.1
+exon_minus	1001-1075	-	exonic_gene_B.2
+ambiguous_overlap	1151-1225	+	gene_B.2_and_gene_C_unstranded
+fragment_A/1	151-225	+	paired_gene_A.1
+fragment_A/2	576-650	-	paired_gene_A.1

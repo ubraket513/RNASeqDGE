@@ -1,0 +1,2 @@
+- Heavy stages invoke HISAT2 or optional Parabricks STAR, samtools, featureCounts; Python is Snakemake orchestration and metadata/count merging, R handles DESeq2/apeglm and plots.
+- requirements.txt is not a complete environment specification: Snakemake and R/Bioconductor dependencies are external. Launcher depends on site-specific environment modules.

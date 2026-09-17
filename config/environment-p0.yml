@@ -1,0 +1,22 @@
+name: rnaseqdge-p0
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - pandas
+  - biopython
+  - loguru
+  - biomart
+  - snakemake-minimal=8
+  - bioconductor-deseq2
+  - bioconductor-apeglm
+  - bioconductor-geoquery
+  - bioconductor-org.hs.eg.db
+  - bioconductor-enhancedvolcano
+  - bioconductor-biocparallel
+  - r-optparse
+  - r-tidyverse
+  - r-rcolorbrewer
+  - r-pheatmap
+  - r-ggrepel

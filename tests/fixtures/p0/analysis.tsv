@@ -1,0 +1,6 @@
+key	value
+version	1
+design_terms	condition
+alpha	0.05
+filter	zero_total
+shrinkage	apeglm

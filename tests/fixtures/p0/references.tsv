@@ -1,0 +1,3 @@
+role	path	sha256	source	release
+genome	reference.fa	a3f2a6949755c7910140b2321db10b75ce784711469e713a6579cf90d8800793	synthetic:tools/generate_p0_sequences.py	p0-v1
+annotation	reference.gtf	9bf2a7704737577a810b51df6df0292e2f5abd3c32e399c640dd7128222c0f03	synthetic:tools/generate_p0_sequences.py	p0-v1

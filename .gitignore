@@ -8,3 +8,6 @@ transcripts/
 *.Identifier
 
 tests/output/
+.deps/
+__pycache__/
+build/

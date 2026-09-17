@@ -1,0 +1,2 @@
+- run_pipeline.sh itself calls sbatch after generating config.yaml and run_job.sbatch; README's outer sbatch invocation adds a submission layer. It overwrites config rather than merging optional existing settings.
+- tests/test_minimal.sh and tests/test_subsampled.sh submit isolated HPC jobs; inspect their submission paths and dependencies before running. They require network data access and cluster tools.

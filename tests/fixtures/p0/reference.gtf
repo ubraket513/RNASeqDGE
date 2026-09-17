@@ -1,0 +1,5 @@
+chrSynthetic	P0	exon	101	300	.	+	.	gene_id "gene_A.1"; transcript_id "gene_A.1.tx";
+chrSynthetic	P0	exon	501	700	.	+	.	gene_id "gene_A.1"; transcript_id "gene_A.1.tx";
+chrSynthetic	P0	exon	1001	1300	.	-	.	gene_id "gene_B.2"; transcript_id "gene_B.2.tx";
+chrSynthetic	P0	exon	1101	1400	.	+	.	gene_id "gene_C"; transcript_id "gene_C.tx";
+chrSynthetic	P0	exon	2001	2300	.	+	.	gene_id "gene_zero"; transcript_id "gene_zero.tx";

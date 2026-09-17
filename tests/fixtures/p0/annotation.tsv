@@ -1,0 +1,5 @@
+gene_id	gene_symbol	biotype	chromosome
+gene_A.1	SHARED	protein_coding	chrSynthetic
+gene_B.2	SHARED	protein_coding	chrSynthetic
+gene_C		lncRNA	chrSynthetic
+gene_zero			chrSynthetic

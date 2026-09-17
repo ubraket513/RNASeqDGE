@@ -1,0 +1,3 @@
+- Active workflow: pipeline.smk, launched by run_pipeline.sh which generates and submits run_job.sbatch. deprecated/ is historical, not the active implementation.
+- Merge stage maps SRR to GSM and converts reference gene identifiers through BioMart before DESeq2; preserve and validate identifier semantics when changing annotation.
+- Stack constraints: `mem:tech_stack`. Execution caveats: `mem:suggested_commands`. Data contracts: `mem:conventions`. Validation limits: `mem:task_completion`.

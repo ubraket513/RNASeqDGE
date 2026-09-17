@@ -1,4 +1,9 @@
 # RNA_Seq_Final_Project
+
+> C++ migration planning (implementation pending): start with
+> [the session handoff](docs/SESSION_HANDOFF.md) and
+> [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
+
 This repository presents a comprehensive analysis of RNA-Seq data to investigate the molecular underpinnings of bipolar disorder (BD), alongside the implementation of a computational pipeline optimized for high-performance computing (HPC) environments. The pipeline performs a robust and systematic analysis of raw Illumina high-throughput RNA-Seq reads, ensuring efficient and accurate data processing. The study outlines the rationale, methodology, and implementation details of each step in the RNA-Seq data analysis workflow. RNA-Seq data from the human dorsal striatum were utilized to profile transcriptomes, comparing cohorts of bipolar disorder patients to healthy controls. Differential gene expression (DGE) analysis was conducted using the \texttt{DESeq2} library to identify genes exhibiting significant changes in expression associated with bipolar disorder status. The results were further analyzed to uncover sets of co-expressed and correlated genes, providing insights into their potential association with bipolar disorder.
 
 ## Design and Specifications

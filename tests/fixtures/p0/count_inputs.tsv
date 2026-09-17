@@ -1,0 +1,6 @@
+run_id	sample_id	path
+run_t2	treated_2	counts/run_t2.tsv
+run_c1a	control_1	counts/run_c1a.tsv
+run_c1b	control_1	counts/run_c1b.tsv
+run_t1	treated_1	counts/run_t1.tsv
+run_c2	control_2	counts/run_c2.tsv

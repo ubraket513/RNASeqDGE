@@ -1,0 +1,3 @@
+- transcripts/*.csv are actually two-column tab-delimited count files; data/counts.csv is comma-delimited with four annotation columns and GSM sample columns.
+- Keep reference gene IDs separate from display symbols; current merger assumes symbols and inner-joins live BioMart annotations, potentially dropping genes.
+- R analysis matches sample columns to GEO GSM rows, derives condition from metadata titles, and chooses reference alphabetically. Explicit sample/design contracts are needed before generalizing.

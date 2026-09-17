@@ -1,0 +1,5 @@
+gene_id	treated_2	control_1	treated_1	control_2
+gene_A.1	20	6	18	8
+gene_B.2	4	8	2	9
+gene_C	7	1	6	2
+gene_zero	0	0	0	0
