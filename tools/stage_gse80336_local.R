@@ -2,6 +2,14 @@
 # Restricted-reference smoke preparation; never a whole-genome method benchmark.
 source(file.path(dirname(sub('^--file=','',grep('^--file=',commandArgs(),value=TRUE)[1])),if(basename(dirname(sub('^--file=','',grep('^--file=',commandArgs(),value=TRUE)[1])))=='integration')'../../tools/lib_helpers.R' else 'lib_helpers.R'))
 ACCESSION<-'NC_000022.11'; ASSEMBLY<-'GCF_000001405.40_GRCh38.p14'
+validate_read_stage<-function(stage) {
+ assert(is.character(stage$sampling) && length(stage$sampling)==1L &&
+  startsWith(stage$sampling,'first N complete FASTQ records in archive order;'),
+  'read-stage must contain contiguous archive prefixes, not subsampled selections')
+ assert(length(stage$reads)>0L && all(vapply(stage$reads,function(read)is.null(read$selection),TRUE)),
+  'read-stage contains a non-prefix selection')
+ invisible(TRUE)
+}
 copy_fastq_prefix<-function(source,destination,records,check_deadline=function(){}) {
  for(record in seq_len(records)) {
   check_deadline();lines<-withCallingHandlers(readLines(source,n=4L,warn=TRUE),warning=function(w)stop('incomplete FASTQ line'))
@@ -32,6 +40,7 @@ main<-function(){
   provenance$references[[length(provenance$references)+1L]]<-list(file=name,url=info$url,md5=actual,md5_verified=TRUE,compressed_bytes=file.info(path)$size)
  }
  old<-if(!is.null(args[['read-stage']]))read_json(file.path(args[['read-stage']],'provenance.json')) else NULL
+ if(!is.null(old))validate_read_stage(old)
  for(row in rows_list(selected)) {
   check_deadline();url<-paste0(args[['ena-scheme']], '://',row$fastq_ftp);assert(!grepl(';',url,fixed=TRUE),'expected one single-end source')
   path<-file.path(reads_dir,paste0(row$run_id,'.fastq'));partial<-paste0(path,'.partial');begin<-Sys.time()
@@ -47,15 +56,29 @@ main<-function(){
   outgoing<-file(partial,'w');tryCatch(copy_fastq_prefix(incoming,outgoing,records,check_deadline),finally={close(incoming);close(outgoing)})
   assert(file.rename(partial,path),'FASTQ prefix publish failed')
   result<-list(sample_id=row$sample_id,run_id=row$run_id,url=url,source_full_md5=row$fastq_md5,source_full_md5_verified=FALSE,source_full_gzip_crc_verified=FALSE,source_total_records=as.numeric(row$read_count),prefix_records=records,path=file.path('reads',basename(path)),sha256=sha256(path),bytes=file.info(path)$size,seconds=as.numeric(difftime(Sys.time(),begin,units='secs')))
-  if(!is.null(old))result$local_verified_parent_stage<-absolute(args[['read-stage']])
+  if(!is.null(old)) {
+   result$local_verified_parent_stage<-absolute(args[['read-stage']])
+   result$source_prefix_sha256<-prior$sha256
+   result$source_prefix_records<-prior$prefix_records
+  }
   write_json(result,file.path(reads_dir,paste0(row$run_id,'.provenance.json')));provenance$reads[[length(provenance$reads)+1L]]<-result;cat('STAGED',row$run_id,records,'records\n')
  }
  # Stream 10k lines at a time; never materialize the full human reference in RAM.
  incoming<-gzfile(file.path(downloads,paste0(ASSEMBLY,'_genomic.fna.gz')),'rt');target<-file(file.path(out,'reference.fa'),'w');bases<-0;found<-0L;active<-FALSE
- tryCatch(repeat{lines<-readLines(incoming,n=10000L);if(!length(lines))break;check_deadline();for(line in lines){if(startsWith(line,'>')){active<-strsplit(substring(line,2),' ')[[1]][1]==ACCESSION;if(active){found<-found+1L;writeLines(line,target)}}else if(active){bases<-bases+nchar(trimws(line));writeLines(line,target)}}},finally={close(incoming);close(target)})
+ tryCatch(repeat{
+  lines<-readLines(incoming,n=10000L);if(!length(lines))break;check_deadline()
+  first<-1L
+  for(header in which(startsWith(lines,'>'))) {
+   if(active && header>first){chunk<-lines[seq.int(first,header-1L)];bases<-bases+sum(nchar(trimws(chunk)));writeLines(chunk,target)}
+   active<-strsplit(substring(lines[header],2),' ')[[1]][1]==ACCESSION
+   if(active){found<-found+1L;writeLines(lines[header],target)}
+   first<-header+1L
+  }
+  if(active && first<=length(lines)){chunk<-lines[seq.int(first,length(lines))];bases<-bases+sum(nchar(trimws(chunk)));writeLines(chunk,target)}
+ },finally={close(incoming);close(target)})
  assert(found==1L&&bases==50818468,'NC_000022.11 FASTA accession/length mismatch')
  incoming<-gzfile(file.path(downloads,paste0(ASSEMBLY,'_genomic.gtf.gz')),'rt');target<-file(file.path(out,'reference.gtf'),'w');genes<-list();exon_rows<-0L
- tryCatch(repeat{lines<-readLines(incoming,n=10000L);if(!length(lines))break;check_deadline();for(line in lines){
+ tryCatch(repeat{lines<-readLines(incoming,n=10000L);if(!length(lines))break;check_deadline();lines<-lines[startsWith(lines,'#')|startsWith(lines,paste0(ACCESSION,'\t'))];for(line in lines){
   if(startsWith(line,'#')){writeLines(line,target);next};fields<-strsplit(line,'\t')[[1]];assert(length(fields)==9L,'invalid GTF row');if(fields[1]!=ACCESSION)next
   assert(as.numeric(fields[4])>=1&&as.numeric(fields[5])<=bases,'GTF coordinates outside accession');writeLines(line,target)
   if(fields[3]=='exon'){attribute<-function(key){pattern<-paste0('(^|; )',key,' "([^"]*)";');m<-regexec(pattern,fields[9]);match<-regmatches(fields[9],m)[[1]];if(length(match))match[3]else ''};gene<-attribute('gene_id');assert(nzchar(gene),'missing gene_id');genes[[gene]]<-data.frame(gene_id=gene,gene_symbol=attribute('gene'),biotype=attribute('gene_biotype'),chromosome=ACCESSION);exon_rows<-exon_rows+1L}

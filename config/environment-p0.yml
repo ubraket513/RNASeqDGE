@@ -1,3 +1,5 @@
+# Historical P0 validation environment, not the supported compute runtime.
+# Use runtime-r-linux-64.explicit.txt and the native tool bundle (see README).
 name: rnaseqdge-p0
 channels:
   - conda-forge

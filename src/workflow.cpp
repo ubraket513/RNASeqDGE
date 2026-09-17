@@ -87,8 +87,8 @@ struct Workflow {
     std::map<std::string,std::string> snapshots;
     std::vector<fs::path> sources;
     int threads=1,workers=1,local_jobs=1,local_cpus=1,local_mem_mb=0,local_job_mem_mb=0;
-    bool memory_fallback=true;
-    explicit Workflow(const fs::path& path) {
+    bool memory_fallback=true,slurm_resources=false;
+    explicit Workflow(const fs::path& path,const std::string& command) {
         config=fs::canonical(path); const auto base=config.parent_path();
         auto t=read_table(config.string()); if(t.header!=std::vector<std::string>{"key","value"})fail("config header must be key/value");
         const std::set<std::string> allowed{"samples","runs","references","analysis","contrasts","genes","annotation","bin_dir","rscript","r_script","tool_lock","r_lock","run_dir","index_cache","backend","threads","workers","star_sa_bases","star_chr_bits","slurm_bin_dir","slurm_cpus","slurm_mem_mb","slurm_time","slurm_partition","slurm_concurrency","local_jobs","local_cpus","local_mem_mb","local_job_mem_mb"};
@@ -98,30 +98,41 @@ struct Workflow {
         if(c.at("backend")!="hisat2"&&c.at("backend")!="star")fail("backend must be hisat2 or star");
         threads=number(c.at("threads"),"threads");workers=number(c.at("workers"),"workers");number(c.at("slurm_concurrency"),"slurm_concurrency");
         if(number(c.at("star_sa_bases"),"star_sa_bases")>14||number(c.at("star_chr_bits"),"star_chr_bits")>18)fail("STAR sizing exceeds allowed bounds");
-        if(const char* budget=getenv("SLURM_CPUS_PER_TASK"))if(std::max(threads,workers)>number(budget,"SLURM_CPUS_PER_TASK"))fail("threads/workers exceeds SLURM_CPUS_PER_TASK");
-        cpu_set_t affinity; CPU_ZERO(&affinity);
-        local_cpus=sched_getaffinity(0,sizeof(affinity),&affinity)==0?CPU_COUNT(&affinity):1;
-        if(c.count("local_cpus"))local_cpus=std::min(local_cpus,number(c.at("local_cpus"),"local_cpus"));
-        if(const char* budget=getenv("SLURM_CPUS_PER_TASK"))local_cpus=std::min(local_cpus,number(budget,"SLURM_CPUS_PER_TASK"));
-        if(std::max(threads,workers)>local_cpus)fail("threads/workers exceeds resolved local CPU budget");
-        local_jobs=c.count("local_jobs")?number(c.at("local_jobs"),"local_jobs"):local_cpus/threads;
-        local_jobs=std::min(local_jobs,local_cpus/threads);
-        if(c.count("local_mem_mb"))local_mem_mb=number(c.at("local_mem_mb"),"local_mem_mb");
-        if(c.count("local_job_mem_mb"))local_job_mem_mb=number(c.at("local_job_mem_mb"),"local_job_mem_mb");
-        if(const char* memory=getenv("SLURM_MEM_PER_NODE")) {
-            const int allocated=number(memory,"SLURM_MEM_PER_NODE");
-            local_mem_mb=local_mem_mb?std::min(local_mem_mb,allocated):allocated;
-        }
-        if(const char* memory=getenv("SLURM_MEM_PER_CPU")) {
-            const auto allocated=std::min<long long>(std::numeric_limits<int>::max(),
-                static_cast<long long>(number(memory,"SLURM_MEM_PER_CPU"))*local_cpus);
-            local_mem_mb=local_mem_mb?std::min(local_mem_mb,static_cast<int>(allocated)):static_cast<int>(allocated);
-        }
-        memory_fallback=!local_mem_mb || !local_job_mem_mb;
-        if(memory_fallback)local_jobs=1;
-        else {
-            if(local_job_mem_mb>local_mem_mb)fail("local_job_mem_mb exceeds resolved memory budget");
-            local_jobs=std::min(local_jobs,local_mem_mb/local_job_mem_mb);
+        slurm_resources=command=="workflow-submit" || (command=="workflow-plan" && c.count("slurm_cpus"));
+        // Local settings still have a strict schema even when submitting, but
+        // the login host's affinity/allocation does not constrain remote jobs.
+        for(const auto& key:{"local_jobs","local_cpus","local_mem_mb","local_job_mem_mb"})
+            if(c.count(key))number(c.at(key),key);
+        if(slurm_resources) {
+            if(!c.count("slurm_cpus"))fail("submission requires slurm_cpus");
+            local_cpus=number(c.at("slurm_cpus"),"slurm_cpus");
+            local_mem_mb=c.count("slurm_mem_mb")?number(c.at("slurm_mem_mb"),"slurm_mem_mb"):0;
+        }else {
+            if(const char* budget=getenv("SLURM_CPUS_PER_TASK"))if(std::max(threads,workers)>number(budget,"SLURM_CPUS_PER_TASK"))fail("threads/workers exceeds SLURM_CPUS_PER_TASK");
+            cpu_set_t affinity; CPU_ZERO(&affinity);
+            local_cpus=sched_getaffinity(0,sizeof(affinity),&affinity)==0?CPU_COUNT(&affinity):1;
+            if(c.count("local_cpus"))local_cpus=std::min(local_cpus,number(c.at("local_cpus"),"local_cpus"));
+            if(const char* budget=getenv("SLURM_CPUS_PER_TASK"))local_cpus=std::min(local_cpus,number(budget,"SLURM_CPUS_PER_TASK"));
+            if(std::max(threads,workers)>local_cpus)fail("threads/workers exceeds resolved local CPU budget");
+            local_jobs=c.count("local_jobs")?number(c.at("local_jobs"),"local_jobs"):local_cpus/threads;
+            local_jobs=std::min(local_jobs,local_cpus/threads);
+            if(c.count("local_mem_mb"))local_mem_mb=number(c.at("local_mem_mb"),"local_mem_mb");
+            if(c.count("local_job_mem_mb"))local_job_mem_mb=number(c.at("local_job_mem_mb"),"local_job_mem_mb");
+            if(const char* memory=getenv("SLURM_MEM_PER_NODE")) {
+                const int allocated=number(memory,"SLURM_MEM_PER_NODE");
+                local_mem_mb=local_mem_mb?std::min(local_mem_mb,allocated):allocated;
+            }
+            if(const char* memory=getenv("SLURM_MEM_PER_CPU")) {
+                const auto allocated=std::min<long long>(std::numeric_limits<int>::max(),
+                    static_cast<long long>(number(memory,"SLURM_MEM_PER_CPU"))*local_cpus);
+                local_mem_mb=local_mem_mb?std::min(local_mem_mb,static_cast<int>(allocated)):static_cast<int>(allocated);
+            }
+            memory_fallback=!local_mem_mb || !local_job_mem_mb;
+            if(memory_fallback)local_jobs=1;
+            else {
+                if(local_job_mem_mb>local_mem_mb)fail("local_job_mem_mb exceeds resolved memory budget");
+                local_jobs=std::min(local_jobs,local_mem_mb/local_job_mem_mb);
+            }
         }
         if(c.count("slurm_cpus")&&number(c.at("slurm_cpus"),"slurm_cpus")<std::max(threads,workers))fail("slurm_cpus smaller than threads/workers");
         if(c.count("slurm_mem_mb"))number(c.at("slurm_mem_mb"),"slurm_mem_mb");
@@ -286,9 +297,15 @@ struct Workflow {
         std::cout<<"DAG: index -> alignment/counting["<<runs.rows.size()<<"] -> sample merge -> offline R\n";
         for(const auto& [k,v]:c)std::cout<<k<<'\t'<<v<<'\n';
         std::cout<<"reference_fasta\t"<<fasta<<"\nreference_gtf\t"<<gtf<<"\nBLAS/OpenMP: 1\n";
-        std::cout<<"local_resolved_cpus\t"<<local_cpus<<"\nlocal_resolved_mem_mb\t"<<local_mem_mb
-                 <<"\nlocal_job_mem_mb\t"<<local_job_mem_mb<<"\nlocal_resolved_jobs\t"<<local_jobs
-                 <<"\nlocal_memory_policy\t"<<(memory_fallback?"serial fallback: total/per-job memory estimate missing":"reservation estimates; not a hard RSS limit")<<'\n';
+        if(slurm_resources) {
+            std::cout<<"resource_scope\tslurm_requested\nresolved_task_cpus\t"<<local_cpus
+                     <<"\nresolved_task_mem_mb\t"<<local_mem_mb<<'\n';
+        }else {
+            std::cout<<"resource_scope\tlocal_allocation\n";
+            std::cout<<"local_resolved_cpus\t"<<local_cpus<<"\nlocal_resolved_mem_mb\t"<<local_mem_mb
+                     <<"\nlocal_job_mem_mb\t"<<local_job_mem_mb<<"\nlocal_resolved_jobs\t"<<local_jobs
+                     <<"\nlocal_memory_policy\t"<<(memory_fallback?"serial fallback: total/per-job memory estimate missing":"reservation estimates; not a hard RSS limit")<<'\n';
+        }
         std::cout<<table_text(runs);
     }
     void submit() {
@@ -325,7 +342,7 @@ void workflow_command(int argc,char** argv) {
     const std::string command=argv[1];
     if(command!="workflow-plan" && command!="workflow-local" && command!="workflow-submit" && command!="workflow-task")fail("unknown workflow command");
     if(command=="workflow-task" ? argc!=4 : argc!=3)fail("usage: rnaseq workflow-plan|workflow-local|workflow-submit CONFIG; workflow-task CONFIG index|array|finish");
-    Workflow w(argv[2]);if(command=="workflow-plan"){w.plan();return;}
+    Workflow w(argv[2],command);if(command=="workflow-plan"){w.plan();return;}
     for(const auto& name:{"OMP_NUM_THREADS","OPENBLAS_NUM_THREADS","MKL_NUM_THREADS","VECLIB_MAXIMUM_THREADS","NUMEXPR_NUM_THREADS"})setenv(name,"1",1);
     fs::create_directory(w.run);Lock lock(w.run/"workflow.lock",command=="workflow-task",command=="workflow-task");
     w.snapshot(command!="workflow-task");fs::create_directory(w.run/"align");

@@ -23,7 +23,8 @@ Required paths are `samples`, `runs`, `references`, `analysis`, `contrasts`,
 configuration file; embedded run/reference paths resolve relative to their own
 manifests. All scientific manifests use the existing P1/P2/P3 contracts. Large
 FASTQ and reference files must already exist locally and FASTQs must be uncompressed.
-The tool locks are explicit package lock files retained as provenance. Executable
+The tool locks are explicit package locks or the native bundle's `SHA256SUMS`
+inventory retained as provenance. Executable
 versions are checked by P4; P5 explicitly checks R 4.5.3 and DESeq2 1.50.2, apeglm 1.32.0,
 BiocParallel 1.44.0 and pheatmap 1.0.13 before its analysis invocation.
 R_HOME, R_LIBS, LD_LIBRARY_PATH and LD_PRELOAD overrides are cleared for R;
@@ -59,6 +60,14 @@ single DAG phases; the alignment reservation does not estimate R worker memory.
 For example, `threads=4`, `local_cpus=16`, `local_jobs=4`, `local_mem_mb=32000`,
 `local_job_mem_mb=12000` resolves to two simultaneous alignments, reserving 8 CPUs
 and 24000 MB. A smaller Slurm CPU allocation can reduce that further.
+
+Submission resource validation uses the requested `slurm_cpus` and
+`slurm_mem_mb`, independently of the login host's affinity or local budgets.
+`workflow-plan` reports `resource_scope=slurm_requested` when `slurm_cpus` is
+configured; otherwise it reports the local allocation. `workflow-local` and
+executing `workflow-task` commands still enforce actual affinity and allocation
+limits before work starts. Planning a Slurm submission therefore does not prove
+that the same configuration can run locally.
 
 `workflow-plan` validates and hashes inputs, prints resolved paths, requested
 resource settings and the DAG, and creates no output. Hashing invokes the existing
@@ -177,7 +186,7 @@ Slurm resources/dependencies/array mapping, duplicate-submission rejection and
 partial-submission rollback. Stub R output tests orchestration only.
 
 ```sh
-python3 tests/integration/check_p5_real.py
+.deps/runtime-r/bin/Rscript --vanilla tests/integration/check_p5_real.R
 ```
 
 The separate installed-tool gate uses real HISAT2/samtools/featureCounts on five

@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 source(file.path(dirname(sub('^--file=','',grep('^--file=',commandArgs(),value=TRUE)[1])),'../../tools/lib_helpers.R'))
-args<-parse_cli(list('bin-dir'=file.path(ROOT,'.deps/alignment/bin'),rscript=file.path(ROOT,'.deps/p0/bin/Rscript')))
+args<-parse_cli(list('bin-dir'=file.path(ROOT,'.deps/runtime-tools/bin'),rscript=file.path(ROOT,'.deps/runtime-r/bin/Rscript')))
 work<-new_directory('p5-real-r-',file.path(ROOT,'tests/output')); settings<-setNames(as.list(file.path(ROOT,'tests/fixtures/p0',paste0(c('samples','runs','references','analysis','contrasts'),'.tsv'))),c('samples','runs','references','analysis','contrasts'))
-settings<-c(settings,list(genes=file.path(ROOT,'tests/fixtures/p2/genes.tsv'),bin_dir=absolute(args[['bin-dir']]),rscript=absolute(args$rscript),r_script=file.path(ROOT,'run_deg_analysis_offline.R'),tool_lock=file.path(ROOT,'config/alignment-linux-64.explicit.txt'),r_lock=file.path(ROOT,'config/p0-linux-64.explicit.txt'),run_dir=file.path(work,'run')))
+settings<-c(settings,list(genes=file.path(ROOT,'tests/fixtures/p2/genes.tsv'),bin_dir=absolute(args[['bin-dir']]),rscript=absolute(args$rscript),r_script=file.path(ROOT,'run_deg_analysis_offline.R'),tool_lock=file.path(ROOT,'config/alignment-linux-64.explicit.txt'),r_lock=file.path(ROOT,'config/runtime-r-linux-64.explicit.txt'),run_dir=file.path(work,'run')))
 config<-file.path(work,'workflow.tsv'); kv_write(settings,config)
 result<-with_environment(c(clean_environment(),list(PATH='/usr/bin:/bin')),run(c(file.path(ROOT,'build/rnaseq'),'workflow-local',config),log=file.path(work,'workflow.log'),check=FALSE))
 stopifnot(result$status!=0L); dest<-settings$run_dir

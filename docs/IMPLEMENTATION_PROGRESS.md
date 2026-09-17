@@ -1,16 +1,20 @@
 # Implementation progress
 
-Updated 2026-09-17. Baseline HEAD remains
-`9f181e2310196fc22ce1159e530b320c48b4592c`.
+Updated 2026-09-17. Latest user checkpoint: `2569861` (performance profiling).
 
 ## Status
 
 **P0 local gate passed; P1 validation, P2 streaming count merge, and P3 offline
 DESeq2 interface and P4 offline alignment/toolchain boundary complete.
 P5 complete; P6 reduced local comparison complete; full benchmark deferred;
-P7 not started.** HISAT2 remains the default. Dependencies
-were installed after explicit user authorization. No production pipeline files
-were changed, jobs submitted, or commits created. Published-count checks and a
+P7 complete for the authorized local scope.** Native scheduling/profiling and
+compatible R fit reuse passed their checks. The Python-free compute prefixes
+passed package/library audits, eight real-tool cases and a six-sample raw-read
+workflow with exact merged counts and all nine scientific tables matching P6.
+See [P7 runtime evidence](P7_RUNTIME.md). Helper retirement, sampling-provenance
+review fix and Slurm submission-affinity regression are complete. HISAT2 remains the default. Dependencies
+were installed after explicit user authorization. Production entry points now
+use the native workflow; no live Slurm jobs were submitted. Published-count checks and a
 reduced real-read workflow have run; whole-study raw-alignment parity is not claimed.
 The pre-existing README changes and untracked docs/Serena metadata were preserved.
 

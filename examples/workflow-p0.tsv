@@ -5,11 +5,11 @@ references	../tests/fixtures/p0/references.tsv
 analysis	../tests/fixtures/p0/analysis.tsv
 contrasts	../tests/fixtures/p0/contrasts.tsv
 genes	../tests/fixtures/p2/genes.tsv
-bin_dir	../.deps/alignment/bin
-rscript	../.deps/p0/bin/Rscript
+bin_dir	../.deps/runtime-tools/bin
+rscript	../.deps/runtime-r/bin/Rscript
 r_script	../run_deg_analysis_offline.R
-tool_lock	../config/alignment-linux-64.explicit.txt
-r_lock	../config/p0-linux-64.explicit.txt
+tool_lock	../.deps/runtime-tools/SHA256SUMS
+r_lock	../config/runtime-r-linux-64.explicit.txt
 run_dir	../tests/output/p5-example
 backend	hisat2
 threads	1

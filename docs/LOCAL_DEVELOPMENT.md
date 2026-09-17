@@ -68,96 +68,70 @@ establish alignment-backend or statistical parity.
 
 ## Analysis dependencies
 
-P4 adds an explicit staging/preflight boundary (Python 3.11+ standard library;
-Mamba is required only for staging). To prepare a new Linux x86_64 prefix:
+Preparation uses shell or R with jsonlite; compute uses the native executables
+and pinned R/Bioconductor. Python and Snakemake are not required. Mamba is needed
+only during explicit online environment creation. For a fresh Linux x86_64 setup:
 
 ```sh
-python3 tools/toolchain.py stage alignment --prefix .deps/alignment-new
-python3 tools/toolchain.py stage p0 --prefix .deps/r-new
+mkdir -p .deps tests/output
+bash tools/toolchain.sh stage runtime-r --prefix .deps/runtime-r
+# The alignment prefix is a staging source, never the compute environment.
+bash tools/toolchain.sh stage alignment --prefix .deps/alignment
+bash tools/stage_native_runtime.sh .deps/alignment .deps/runtime-tools
+.deps/runtime-r/bin/Rscript --vanilla tools/toolchain.R preflight \
+  --alignment .deps/runtime-tools --r-prefix .deps/runtime-r \
+  --out tests/output/toolchain-preflight
+.deps/runtime-r/bin/Rscript --vanilla tests/integration/check_p4_toolchain.R
 ```
 
-These commands install the exact existing explicit locks and verify installed
-name/version/build/archive-SHA-256 records. Prefixes must be absent. Staging is
-online; a failed install is retained for diagnosis and must not be treated as
-ready. Existing prefixes are never overwritten. Compute never calls staging.
+All destinations must be absent. A failed installation is retained for diagnosis;
+compute never installs or fetches dependencies. The shell bootstrap can create R
+without a preinstalled R interpreter. For alignment-only bootstrap verification,
+use a system R with jsonlite or stage runtime-r first and add its `bin` to PATH.
+The R `toolchain.R stage` entry remains available where R/jsonlite already exist.
 
-For an installed environment, run the offline preflight:
+Preflight checks exact package name/version/build and archive SHA256 identity,
+explicit URL/MD5 locks, retained recipes/licenses, the native bundle inventory,
+actual versions, pinned R packages, DESeq2/apeglm computation, and PNG output.
+Some explicit Mamba installations omit SHA256 in installed records; in that case,
+preflight verifies the retained package archive against the pinned SHA256 rather
+than accepting MD5 alone. Keep the package cache for this verification.
+
+Preflight constrains auxiliary threads and excludes user R libraries. Successful
+output contains `verified.json`, version logs, `R.log`, `MA.png`, and sessionInfo;
+failed staging logs remain unpublished for inspection. `--r-kind p0` and an
+explicit historical prefix permit historical package checks only. Current defaults
+are `.deps/runtime-tools` and `.deps/runtime-r`; see [P7_RUNTIME.md](P7_RUNTIME.md).
+On hosts supporting user/network namespaces, prepend `unshare -Urn` for an
+independent network-disabled check.
+
+Independent synthetic sequence/count oracles and real tool checks are:
 
 ```sh
-mkdir -p tests/output
-python3 tools/toolchain.py preflight --out tests/output/toolchain-preflight
-python3 tests/integration/check_p4_toolchain.py
+.deps/runtime-r/bin/Rscript --vanilla tests/integration/check_p0_fixture.R
+.deps/runtime-r/bin/Rscript --vanilla tests/integration/check_p4_alignment.R
+.deps/runtime-r/bin/Rscript --vanilla tests/integration/check_p0_r.R
 ```
 
-The output directory must be absent. `--alignment` and `--r-prefix` select other
-prefixes. Preflight checks both full package locks, retained recipe/license hashes,
-actual STAR/HISAT2/build/samtools/featureCounts versions, pinned R packages,
-DESeq2/apeglm computation, and a PNG device. It constrains auxiliary threads and
-excludes user R libraries. Successful output includes `verified.json`, version
-logs, `R.log`, `MA.png` and `sessionInfo.txt`; failed temporary output is retained
-without publishing the requested directory. Package metadata checks do not prove
-every installed file is unmodified; actual probed entry-point hashes are recorded.
+`check_p0_alignment.R` is retained as an entry-point alias for the broader P4
+gate, which checks both native backends, SE/PE, and threads 1/2 against the
+independent P0 origins. The fixture generator is `tools/generate_p0_sequences.R`;
+`--output DIR` permits regeneration without modifying the repository fixture.
+No expected count tables are generated. Historical legacy-bug probes are retired;
+recover them only in the isolated tree described in [LEGACY_RECOVERY.md](LEGACY_RECOVERY.md).
 
-On Linux hosts allowing user/network namespaces, prefix the command with
-`unshare -Urn` to independently verify execution without networking. This passed
-locally for both the existing and a newly reconstructed alignment prefix.
-See [vendor toolchain provenance](../vendor/toolchain/README.md) for source/build
-records and the distinction between locked binary deployment and source rebuilds.
-Native backend CLI and real-tool checks are in [P4_BACKENDS.md](P4_BACKENDS.md).
-
-Installed locally under ignored `.deps/`:
-
-- `.deps/p0`: Python/Snakemake plus R/Bioconductor and required plotting packages.
-- `.deps/alignment`: legacy HISAT2 2.2.1, Subread 2.0.6, samtools 1.17, STAR 2.7.10b.
-
-Separate prefixes avoid the old alignment stack's zlib conflict with current R.
-Explicit lock files in `config/` pin all resolved package URLs, builds and MD5s;
-the accompanying provenance JSON records SHA-256, licenses, dependencies, and
-post-link R source URLs/MD5s from the installed recipes. The YAML files describe requested constraints and
-are **not** reproducibility locks. Use the explicit files to reconstruct:
-
-```sh
-MAMBA_ROOT_PREFIX="$PWD/.deps/mamba" CONDA_PKGS_DIRS="$PWD/.deps/pkgs" \
-  mamba create --prefix "$PWD/.deps/p0" --file config/p0-linux-64.explicit.txt --yes
-MAMBA_ROOT_PREFIX="$PWD/.deps/mamba" CONDA_PKGS_DIRS="$PWD/.deps/pkgs-align" \
-  mamba create --prefix "$PWD/.deps/alignment" --file config/alignment-linux-64.explicit.txt --yes
-```
-
-Environment creation is an online staging step. Bioconductor data packages can
-download source archives in post-link scripts. The org.Hs.eg.db installer verified
-its recorded MD5 and removed the tarball afterward; no archive SHA-256 was
-captured for that extra download. This is not an offline installation bundle.
-Compute/test execution performs no package installation or metadata downloads.
-Do not combine these prefixes through `LD_LIBRARY_PATH`; invoke installed
-executables using the PATH below. A scheduler is not installed on this machine.
-
-```sh
-export PATH="$PWD/.deps/p0/bin:$PWD/.deps/alignment/bin:$PATH"
-export XDG_CACHE_HOME="$PWD/.deps/cache"
-python tests/integration/check_p0_fixture.py
-python tests/integration/check_p0_legacy.py
-python tests/integration/check_p0_alignment.py
-Rscript --vanilla tests/integration/check_p0_r.R
-```
-
-All use synthetic local inputs. The legacy tests assert observed bugs separately
-from the reviewed integer oracle; the R test is backend functionality, not
-original-study statistical parity. R's parametric dispersion fit may fall back
-to a local regression on this synthetic dataset; the log records that choice.
-R outputs include sessionInfo, raw/shrunken tables, and a real PNG.
-
-Raw outputs/logs live in ignored `tests/output/p0/`. No production config, aligner
-default, or submission script is changed by these checks. The two existing
-cluster smoke-test scripts still need their cluster tools and online study data;
-they are not replaced by these local checks. SRA Toolkit and Slurm were not
-installed because the completed checks use local reads and no cluster jobs.
+Package/source recorders are `tools/record_environment.R PREFIX` and
+`tools/record_tool_recipes.R PREFIX [--out DIR]`. They preserve package identities,
+archive hashes, original recipes, patches, and license texts. Recipe recording
+supports the rendered source blocks of the five pinned tool recipes and rejects
+unsupported syntax rather than guessing. Both are preparation tools, not compute.
 
 ## P3 offline DESeq2 interface
 
 Use the pinned R environment directly:
 
 ```sh
-.deps/p0/bin/Rscript --vanilla run_deg_analysis_offline.R \
+.deps/runtime-r/bin/Rscript --vanilla run_deg_analysis_offline.R \
   --counts tests/fixtures/p3/counts.tsv \
   --samples tests/fixtures/p3/samples.tsv \
   --analysis tests/fixtures/p3/analysis.tsv \
@@ -175,7 +149,7 @@ Run the complete public-interface suite with:
 
 ```sh
 mkdir -p tests/output/p3
-.deps/p0/bin/Rscript --vanilla tests/integration/check_p3_r.R
+.deps/runtime-r/bin/Rscript --vanilla tests/integration/check_p3_r.R
 ```
 
 This performs real DESeq2/apeglm fits, independent-oracle comparisons, workers
@@ -183,7 +157,7 @@ This performs real DESeq2/apeglm fits, independent-oracle comparisons, workers
 so it is slower than the native suite. `P3_SCHEMA_ONLY=1` selects the focused
 output-header collision regression but is not the P3 completion gate. Generated
 fixture TSVs can be reproduced with
-`.deps/p0/bin/Rscript --vanilla tools/generate_p3_fixture.R`; their hashes should
+`.deps/runtime-r/bin/Rscript --vanilla tools/generate_p3_fixture.R`; their hashes should
 remain unchanged.
 
 Serena's project configuration now requests Bash and R language servers. The R
@@ -195,7 +169,7 @@ the new R symbols.
 
 The local workflow, verified resume, reference cache and explicit Slurm submission
 interfaces are documented in [P5_WORKFLOW.md](P5_WORKFLOW.md). `make check` includes
-their offline orchestration regressions. `python3 tests/integration/check_p5_real.py`
+their offline orchestration regressions. `Rscript --vanilla tests/integration/check_p5_real.R`
 checks real P0 alignment/merge and the expected insufficient-data R failure.
 
 [P6_REPORT_DATA.md](P6_REPORT_DATA.md) records the TeX-derived GSE80336 inputs,

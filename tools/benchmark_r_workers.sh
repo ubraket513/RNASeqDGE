@@ -4,7 +4,7 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 input=$(realpath "${1:-$repo/tests/output/p6-inputs/full36}")
 output=${2:-$repo/tests/output/p7-benchmark-$(date -u +%Y%m%dT%H%M%SZ)}
-rscript=$(realpath "${3:-$repo/.deps/p0/bin/Rscript}")
+rscript=$(realpath "${3:-$repo/.deps/runtime-r/bin/Rscript}")
 baseline=${4:-$repo/tests/output/p6-full36}
 mkdir "$output"
 output=$(realpath "$output")

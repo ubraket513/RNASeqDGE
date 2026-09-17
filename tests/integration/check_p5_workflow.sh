@@ -75,6 +75,29 @@ config() {
  printf 'key\tvalue\nsamples\t%s/p0/samples.tsv\nruns\t%s/p0/runs.tsv\nreferences\t%s/p0/references.tsv\nanalysis\t%s/p0/analysis.tsv\ncontrasts\t%s/p0/contrasts.tsv\ngenes\t%s/genes.tsv\nbin_dir\t%s/bin\nrscript\t%s/Rscript\nr_script\t%s/run_deg_analysis_offline.R\ntool_lock\t%s/lock\nr_lock\t%s/lock\nrun_dir\t%s\n' "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$run" > "$output"
 }
 reject() { if "$@" > "$tmp/reject.log" 2>&1; then echo "unexpected success: $*" >&2; exit 1; fi; }
+# Submission describes the target allocation, not the login host's affinity.
+config "$tmp/affinity.tsv" "$tmp/affinity-run"
+mkdir "$tmp/affinity-scheduler"
+printf '#!/bin/sh\nprintf "101\\n"\n' > "$tmp/affinity-scheduler/sbatch"
+printf '#!/bin/sh\nexit 0\n' > "$tmp/affinity-scheduler/scancel"
+chmod +x "$tmp/affinity-scheduler/"*
+printf 'slurm_bin_dir\t%s/affinity-scheduler\nslurm_cpus\t32\nslurm_mem_mb\t4096\nslurm_time\t00:30:00\nthreads\t8\nlocal_cpus\t1\n' "$tmp" >> "$tmp/affinity.tsv"
+login_cpu=$(awk '/Cpus_allowed_list/ {split($2,a,/[,-]/); print a[1]}' /proc/self/status)
+taskset -c "$login_cpu" "$exe" workflow-plan "$tmp/affinity.tsv" > "$tmp/affinity.plan"
+grep -q 'resource_scope.*slurm_requested' "$tmp/affinity.plan"
+taskset -c "$login_cpu" "$exe" workflow-submit "$tmp/affinity.tsv" > "$tmp/affinity.log"
+grep -qx -- '--cpus-per-task=32' "$tmp/affinity-run/submission/index.argv"
+reject taskset -c "$login_cpu" "$exe" workflow-local "$tmp/affinity.tsv"
+grep -q 'CPU budget' "$tmp/reject.log"
+reject env SLURM_CPUS_PER_TASK=32 taskset -c "$login_cpu" "$exe" workflow-task "$tmp/affinity.tsv" index
+grep -q 'CPU budget' "$tmp/reject.log"
+sed 's/slurm_cpus\t32/slurm_cpus\t4/' "$tmp/affinity.tsv" > "$tmp/affinity-small.tsv"
+reject taskset -c "$login_cpu" "$exe" workflow-plan "$tmp/affinity-small.tsv"
+grep -q 'slurm_cpus smaller than threads/workers' "$tmp/reject.log"
+reject taskset -c "$login_cpu" "$exe" workflow-submit "$tmp/affinity-small.tsv"
+grep -q 'slurm_cpus smaller than threads/workers' "$tmp/reject.log"
+printf 'PASS P5 submission affinity: target Slurm allocation independent of login CPU limits\n'
+if test "${P5_AFFINITY_ONLY:-0}" = 1; then exit 0; fi
 config "$tmp/config.tsv" "$tmp/run ; literal"
 reject "$exe" workflow-task "$tmp/config.tsv"
 reject "$exe" workflow-unknown "$tmp/config.tsv"

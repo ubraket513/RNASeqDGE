@@ -33,7 +33,7 @@ does not exist yet. The explicit comparison is treated minus control.
 Verify the arithmetic and identity contracts from the repository root:
 
 ```sh
-python3 tests/integration/check_p0_fixture.py
+Rscript --vanilla tests/integration/check_p0_fixture.R
 ```
 
 This independent stdlib check does not generate or overwrite the expected file.
@@ -47,7 +47,7 @@ overlapping genes for ambiguous assignment, and a zero-coverage gene; SE reads
 and inward-facing PE fragments with explicit origins and strand labels in
 `read_origins.tsv`. `references.tsv` records FASTA/GTF SHA-256 hashes; `runs.tsv`
 records read paths, layout, and explicit unstranded counting. Recreate these
-assets with `python3 tools/generate_p0_sequences.py`. The checker verifies read
+assets with `Rscript --vanilla tools/generate_p0_sequences.R`. The checker verifies read
 sequences against their recorded genomic origins, qualities, and reference hashes.
 
 Runs deliberately reuse reads to test manifests; they are not simulated biological

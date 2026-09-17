@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 source(file.path(dirname(sub('^--file=','',grep('^--file=',commandArgs(),value=TRUE)[1])),'../../tools/lib_helpers.R'))
-args<-parse_cli(list(exe=file.path(ROOT,'build/rnaseq'),'bin-dir'=file.path(ROOT,'.deps/alignment/bin'),output=NULL))
+args<-parse_cli(list(exe=file.path(ROOT,'build/rnaseq'),'bin-dir'=file.path(ROOT,'.deps/runtime-tools/bin'),output=NULL))
 f<-file.path(ROOT,'tests/fixtures/p0'); out<-if(is.null(args$output))new_directory('p4-real-r-',file.path(ROOT,'tests/output')) else args$output
 dir.create(out,recursive=TRUE,showWarnings=FALSE); exe<-absolute(args$exe); tools<-absolute(args[['bin-dir']])
 common<-c('--bin-dir',tools,'--fasta',file.path(f,'reference.fa'),'--gtf',file.path(f,'reference.gtf')); evidence<-list()

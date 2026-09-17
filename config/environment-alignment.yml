@@ -1,3 +1,5 @@
+# Source staging environment: upstream wrapper dependencies include Python.
+# Extract compute payload with tools/stage_native_runtime.sh (see README).
 name: rnaseqdge-alignment
 channels:
   - conda-forge

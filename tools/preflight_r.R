@@ -1,4 +1,4 @@
-# Offline pinned environment smoke check. Called only by tools/toolchain.py.
+# Offline pinned environment smoke check. Called only by tools/toolchain.R.
 args <- commandArgs(trailingOnly = TRUE)
 stopifnot(length(args) == 1L, dir.exists(args[1]), getRversion() == "4.5.3")
 pins <- c(DESeq2 = "1.50.2", apeglm = "1.32.0", BiocParallel = "1.44.0", pheatmap = "1.0.13")

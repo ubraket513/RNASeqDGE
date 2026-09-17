@@ -39,7 +39,7 @@ processed with TopHat/HTSeq, Ensembl 76, trimming/rRNA removal and upstream gene
 symbol collapsing. It is suitable for a statistical pipeline check but cannot
 substitute for the STAR/HISAT2 comparison against a common reference/count policy.
 
-`tools/stage_gse80336.py` verifies the downloaded source SHA256 values and writes
+`tools/stage_gse80336.R` verifies the downloaded source SHA256 values and writes
 explicit full36, without_C28 and balanced subset6 inputs, plus a complete
 GSM/SRX/SRR/download-MD5 mapping. All matrices preserve the published integers.
 The subset retains three samples per condition, with matched sex distribution
@@ -65,8 +65,8 @@ and R computation work offline. The reference URLs and NCBI MD5 values are also
 pinned in that manifest, but the reference archives have not been downloaded.
 
 ```sh
-python3 tools/stage_gse80336.py --source tests/output/p6-staging --out tests/output/p6-inputs
-python3 tests/integration/check_p6_staging.py
+Rscript --vanilla tools/stage_gse80336.R --source tests/output/p6-staging --out tests/output/p6-inputs
+Rscript --vanilla tests/integration/check_p6_staging.R
 ```
 
 For each of `subset6`, `full36`, and `without_C28`, set `cohort` explicitly and
@@ -146,16 +146,16 @@ each attempt, wall/CPU time and maximum process RSS; directory totals exclude
 shared indexes. Pauses/restarts and differing task concurrency prevent a clean
 end-to-end speed comparison. No OS cache eviction is performed.
 
-Preparation scripts: `tools/stage_gse80336_local.py` fetches/verifies/extracts
-chr22 and validates complete FASTQ prefixes; `tools/subsample_gse80336_local.py`
+Preparation scripts: `tools/stage_gse80336_local.R` fetches/verifies/extracts
+chr22 and validates complete FASTQ prefixes; `tools/subsample_gse80336_local.R`
 checks prefix hashes before deterministic thinning. ENA HTTPS was unreachable;
 the public ENA HTTP endpoint worked. Full reference MD5s are verified, while
 partial read downloads cannot verify the full archive MD5 or terminal gzip CRC.
 Each local read selection has its own SHA256 and explicit sampling provenance.
 
-`tools/check_gse80336_local.py` runs serial workflows with two native threads,
+`tools/check_gse80336_local.R` runs serial workflows with two native threads,
 one R worker, bounded wall time, retained logs and per-run status. The companion
-`tools/summarize_gse80336_local.py` requires all requested backend/repetition
+`tools/summarize_gse80336_local.R` requires all requested backend/repetition
 pairs before summarizing counts, mapping, junctions, LFC/DEG differences and
 repeat consistency. Retain HISAT2 as default regardless of this narrow check.
 

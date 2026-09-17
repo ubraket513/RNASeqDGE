@@ -1,5 +1,10 @@
 # 다음 세션 인계
 
+> P7 update: the supported launcher is now `run_pipeline.sh plan|local|submit`.
+> Python/Snakemake entry points are retired; compute uses `.deps/runtime-r` and
+> `.deps/runtime-tools`. See [P7 runtime evidence](P7_RUNTIME.md) and the current
+> implementation progress. The original handoff below is historical.
+
 > 최신 상태 (2026-09-17 후속 작업): dependency 설치와 P0 local 검증 완료,
 > P1 native validator, P2 streaming count adapter/aggregation, P3 offline
 > R/DESeq2 interface 구현·검증 완료. P4 alignment/dependency boundary 구현 및

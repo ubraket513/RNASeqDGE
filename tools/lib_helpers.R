@@ -5,9 +5,9 @@ repo_root <- function() normalizePath(file.path(dirname(script_path()),
 ROOT <- repo_root()
 assert <- function(ok, message='check failed') if (!isTRUE(ok)) stop(message, call.=FALSE)
 read_json <- function(path) jsonlite::fromJSON(path, simplifyVector=FALSE)
-write_json <- function(value, path) jsonlite::write_json(value, path, auto_unbox=TRUE, pretty=TRUE, null='null', na='null')
+write_json <- function(value, path) jsonlite::write_json(value, path, auto_unbox=TRUE, pretty=TRUE, null='null', na='null', digits=NA)
 table_read <- function(path) read.delim(path, colClasses='character', check.names=FALSE,
-  quote='', comment.char='', na.strings=NULL, stringsAsFactors=FALSE)
+  quote='"', comment.char='', na.strings=NULL, stringsAsFactors=FALSE)
 table_write <- function(value, path) write.table(value, path, sep='\t', quote=FALSE,
   row.names=FALSE, col.names=TRUE, na='')
 rows_list <- function(value) lapply(seq_len(nrow(value)), function(i) as.list(value[i,,drop=FALSE]))

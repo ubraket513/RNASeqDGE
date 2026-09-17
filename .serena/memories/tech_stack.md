@@ -1,2 +1,3 @@
-- Heavy stages invoke HISAT2 or optional Parabricks STAR, samtools, featureCounts; Python is Snakemake orchestration and metadata/count merging, R handles DESeq2/apeglm and plots.
-- requirements.txt is not a complete environment specification: Snakemake and R/Bioconductor dependencies are external. Launcher depends on site-specific environment modules.
+- Linux C++17 native CLI orchestrates pinned HISAT2/STAR, samtools, featureCounts and R/DESeq2/apeglm. No Python compute dependency; no GPU backend in supported native workflow.
+- .deps/runtime-r and .deps/runtime-tools are compute prefixes. tools/toolchain.sh bootstraps explicit environments; tools/stage_native_runtime.sh extracts native tools/library closure from source staging. Historical package/source provenance may mention Python; deployed payload does not include it.
+- R remains the statistical implementation with compiled numerical routines. Auxiliary BLAS/OpenMP capped1; fit reuse exact model compatibility only. Local alignment workers fork processes because signal supervision is process-global.

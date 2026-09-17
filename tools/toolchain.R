@@ -8,6 +8,20 @@ check_records <- function(prefix, expected) {
   result[sort(names(result))]
  }
  actual<-lapply(list.files(file.path(prefix,'conda-meta'),'[.]json$',full.names=TRUE),read_json)
+ # Explicit MD5 installs may omit SHA256 from conda-meta and record a legacy
+ # tar.bz2 cache suffix even for .conda archives. Verify the actual retained
+ # archive against the pinned SHA256 instead of weakening the identity check.
+ for(i in seq_along(actual)) if(is.null(actual[[i]]$sha256) || !nzchar(actual[[i]]$sha256)) {
+  row<-actual[[i]]; match<-Filter(function(w)identical(w$name,row$name),expected)
+  assert(length(match)==1L,'unexpected installed package');wanted<-match[[1]]
+  assert(identical(row$url,wanted$url)&&identical(row$md5,wanted$md5),'installed package URL/MD5 mismatch')
+  cached<-row$package_tarball_full_path
+  assert(!is.null(cached)&&nzchar(cached),'missing retained package archive location')
+  candidates<-unique(c(cached,file.path(dirname(cached),basename(wanted$url))))
+  candidates<-candidates[file.exists(candidates)&!dir.exists(candidates)]
+  assert(length(candidates)>0L,paste('SHA256 absent; retain pinned package archive for',row$name))
+  actual[[i]]$sha256<-sha256(candidates[1])
+ }
  assert(identical(records(expected),records(actual)),paste(prefix,'package lock mismatch'))
 }
 check_lock <- function(path, expected) {

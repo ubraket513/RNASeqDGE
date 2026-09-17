@@ -1,161 +1,83 @@
-# RNA_Seq_Final_Project
+# RNASeqDGE
 
-> C++ migration is in progress: local native build and validation instructions
-> are in [Local development](docs/LOCAL_DEVELOPMENT.md). For current gates and
-> remaining work, see [Implementation progress](docs/IMPLEMENTATION_PROGRESS.md),
-> then
-> [the session handoff](docs/SESSION_HANDOFF.md) and
-> [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
+A native C++ RNA-seq workflow with offline R/DESeq2 analysis. The compute runtime
+uses no Python interpreter. It aligns staged FASTQ reads with HISAT2 or STAR,
+counts with featureCounts, merges canonical samples, and runs DESeq2/apeglm.
+The research report studies bipolar disorder using GSE80336 / PRJNA318642.
 
-This repository presents a comprehensive analysis of RNA-Seq data to investigate the molecular underpinnings of bipolar disorder (BD), alongside the implementation of a computational pipeline optimized for high-performance computing (HPC) environments. The pipeline performs a robust and systematic analysis of raw Illumina high-throughput RNA-Seq reads, ensuring efficient and accurate data processing. The study outlines the rationale, methodology, and implementation details of each step in the RNA-Seq data analysis workflow. RNA-Seq data from the human dorsal striatum were utilized to profile transcriptomes, comparing cohorts of bipolar disorder patients to healthy controls. Differential gene expression (DGE) analysis was conducted using the \texttt{DESeq2} library to identify genes exhibiting significant changes in expression associated with bipolar disorder status. The results were further analyzed to uncover sets of co-expressed and correlated genes, providing insights into their potential association with bipolar disorder.
+## Build and prepare
 
-## Design and Specifications
-
-The computational pipeline, which streamlines the complete RNA-Seq differential gene expression (DGE) analysis process, is publicly available on GitHub at [https://github.com/CebolaLab/RNA-seq](https://github.com/CebolaLab/RNA-seq). Designed as a command-line application, the pipeline offers an efficient, automated, and reproducible solution for high-performance computing (HPC) environments. It integrates multiple tools and processes seamlessly using the `slurm` workload manager and runs on Linux operating systems such as AlmaLinux 9 and CentOS 7.
-
-The pipeline is implemented as a modular framework, combining Python, R, shell scripts, and a `Snakemake` workflow. By leveraging `Snakemake`, the pipeline allows task parallelization and efficient resource management across multiple compute nodes. This design significantly reduces processing time, making it suitable for large-scale RNA-Seq datasets.
-
-| Feature | Specification |
-|---|---|
-| Operating System | Linux (AlmaLinux 9, CentOS 7) |
-| Workload Management | slurm |
-| Cores | minimum of 32 cores |
-| Memory | minimum of 50 gigabytes + total size of FASTQ files |
-| External Dependencies | python (≥ 3.9.0), R (≥ 4.0.5) |
-| Estimated Processing Time | 24-48 hours depending on the FASTQ data size |
-
-**Table 1: System Requirements**
-
-To ensure optimal performance and reproducibility, the pipeline adheres to the specifications outlined in Table 1. These requirements include the minimum number of CPU cores, memory size, and software dependencies necessary for the successful execution of the analysis. Depending on the size of the input `FASTQ` files, the estimated runtime for a complete analysis ranges between 24 and 48 hours.
-
-By consolidating all steps of RNA-Seq data analysis into a single pipeline, this implementation provides an effective one-click solution for large-scale genomic studies in high performance computing (HPC) environments.
-
-## Installation
-
-We recommend installing the pipeline directly from the GitHub repository to ensure access to the most recent version, including any updates or fixes. To install the pipeline on your computing cluster, execute the following command:
+Linux, a C++17 compiler, Make, Bash and standard Unix utilities are required.
+Build and run the offline native checks:
 
 ```sh
-git clone [https://github.com/Codakshay/RNA_Seq_Final_Project.git](https://github.com/Codakshay/RNA_Seq_Final_Project.git)
+make -j2
+make check
 ```
 
-For all subsequent steps, ensure you navigate to the root directory of the cloned repository.
-
-Before running the pipeline, it is essential to verify that your computing cluster supports both R and Python as available modules. Most high-performance computing (HPC) environments use module management systems (e.g., module load) to provide software packages. You should confirm that R (version ≥ 4.0.5) and Python (version ≥ 3.9.0) are accessible. If these are not pre-installed, contact your system administrator to install or enable them.
-
-Additionally, ensure that all Python dependencies listed in the requirements.txt file located in the root directory of the repository are installed on the cluster. The required libraries can be installed locally in a virtual environment or within a Conda environment. To set up the environment and install the necessary libraries, execute the following commands:
+Prepare pinned packages once, using a standalone `mamba` or `micromamba` executable
+(pass `--mamba /path/to/micromamba` if needed). Commands require absent destination
+prefixes; do not rerun them over an existing environment.
 
 ```sh
-python3 -m venv env
-source env/bin/activate
-pip install -r requirements.txt
-```
-This will create an isolated virtual environment containing all the required Python dependencies for running the pipeline. If you encounter any issues, verify that the correct Python version is being used and that the required libraries are available.
-
-## Running the Pipeline
-
-This subsection provides a concise manual for executing the computational pipeline on a high-performance computing (HPC) environment. Before proceeding, please verify that your computing system meets the design specifications outlined in the previous subsection.
-
-The pipeline supports RNA-Seq differential gene expression analysis for *Homo sapiens* RNA-Seq data. Single-end and paired-end layouts are both supported and auto-detected at download time. All datasets (raw reads and reference annotations) are downloaded automatically, or a pre-staged local reference can be supplied via config.
-
-### Arguments
-
-```
-sbatch run_pipeline.sh <PRJNA_ID> <HH:MM:SS> <GSE_ACCESSION> [CONDITION_FIELD] [--gpu]
+mkdir -p .deps tests/output
+bash tools/toolchain.sh stage runtime-r --prefix .deps/runtime-r
+export PATH="$PWD/.deps/runtime-r/bin:$PATH"
+bash tools/toolchain.sh stage alignment --prefix .deps/alignment
+bash tools/stage_native_runtime.sh .deps/alignment .deps/runtime-tools
+Rscript --vanilla tools/toolchain.R preflight \
+  --alignment .deps/runtime-tools --r-prefix .deps/runtime-r \
+  --out tests/output/runtime-preflight
 ```
 
-| Argument | Description | Example |
-|---|---|---|
-| `PRJNA_ID` | NCBI BioProject accession | `PRJNA318642` |
-| `HH:MM:SS` | SLURM wall-clock time limit | `24:00:00` |
-| `GSE_ACCESSION` | GEO Series accession for sample metadata | `GSE80336` |
-| `CONDITION_FIELD` | Column in GEO phenoData used to derive group labels (default: `title`) | `title` |
-| `--gpu` | Optional. Submit to a GPU node and use NVIDIA Parabricks STAR for alignment. | — |
+The alignment **source staging prefix** contains upstream wrapper dependencies,
+including Python. The extracted `.deps/runtime-tools` payload contains native
+executables and their private libraries, plus STAR's Bash dispatcher; compute
+jobs use this payload and `.deps/runtime-r`, not the source staging prefix.
+The R lock contains no Python package. System Python is neither used nor removed.
+Historical P0 locks remain provenance and are not the compute environment.
 
-### Example — reproducing the bipolar disorder case study
+HISAT2 invokes its native small-index binaries directly with the upstream wrapper
+marker. This interface accepts uncompressed FASTQ and small `.ht2` indexes;
+compressed reads and large HISAT2 indexes are not supported by this workflow.
+
+## Run
+
+Create validated sample/run/reference/analysis/contrast manifests and a two-column
+`key`/`value` workflow TSV. See [workflow configuration](docs/P5_WORKFLOW.md)
+and [the example](examples/workflow-p0.tsv). Paths resolve relative to their
+configuration or manifest. Data and references must already be staged.
 
 ```sh
-# CPU, ~9–12 hours wall time
-sbatch run_pipeline.sh PRJNA318642 24:00:00 GSE80336 title
-
-# GPU (Parabricks STAR), ~3–4 hours wall time
-sbatch run_pipeline.sh PRJNA318642 04:00:00 GSE80336 title --gpu
+bash run_pipeline.sh plan study-workflow.tsv
+bash run_pipeline.sh local study-workflow.tsv
+# Explicitly submit on a configured Slurm host:
+bash run_pipeline.sh submit study-workflow.tsv
 ```
 
-The script generates `config.yaml` automatically from the arguments above, so no manual file editing is required. To inspect or adjust the configuration beforehand, copy the template:
+Planning validates inputs without running analysis. Runs retain immutable input
+identities, logs, counts, statistical tables, plots, and per-stage profiles.
+Reusing the same configuration resumes only verified stages. Changed inputs or
+software require a new run directory. Failed outputs remain available for diagnosis.
+The tiny P0 example intentionally reaches a too-few-genes R failure; use a real
+study for successful differential expression.
 
-```sh
-cp config.yaml.example config.yaml
-# edit config.yaml as needed, then:
-sbatch run_pipeline.sh PRJNA318642 24:00:00 GSE80336 title
-```
+Local sample concurrency is bounded by `local_cpus`, `threads`, `local_mem_mb`
+and `local_job_mem_mb`, with optional `local_jobs`. Without both memory estimates,
+alignment is serial. Estimates are reservations, not enforced memory limits.
+R `workers` is separate; BLAS/OpenMP helper threads are capped at one. Compatible
+contrasts reuse a fitted DESeq2 model within an invocation. DESeq2 remains in R
+with its compiled numerical routines, preserving the validated statistical method.
 
-While the job runs, monitor its status with `sq`. Logs are written to `logs/rna_seq_analysis_<jobid>.out` and `.err`.
+## Evidence and limits
 
-### Expected wall time (36-sample bipolar study, 32-core node)
+[Progress](docs/IMPLEMENTATION_PROGRESS.md), [local development](docs/LOCAL_DEVELOPMENT.md),
+[Python-free runtime validation](docs/P7_RUNTIME.md), and
+[report-data validation](docs/P6_REPORT_DATA.md) describe the checks and evidence.
+The six-sample, chromosome-22 comparison is a reduced functional check, not a
+whole-genome performance benchmark or reproduction of the report's biological conclusions.
+Live Slurm execution still needs validation on a cluster.
 
-| Stage | CPU (HISAT2 + featureCounts) | GPU (Parabricks STAR + featureCounts) |
-|---|---:|---:|
-| SRR list + FASTQ download (parallel, 4 streams) | 1–2 h | 1–2 h |
-| Reference index build | ~1 h (HISAT2) | ~30 min (STAR) |
-| Alignment, 36 samples | 6–8 h | **30–60 min** |
-| Counting (featureCounts) | 20–30 min | 20–30 min |
-| Merge + BioMart + DESeq2 + plots | ~25 min | ~25 min |
-| **Total** | **~9–12 h** | **~3–4 h** |
-
-GPU mode is ~3× faster overall, driven entirely by Parabricks STAR replacing HISAT2 on the alignment step. DESeq2 itself has no GPU port; the `deseq_workers` config key offers a small multi-core CPU speedup but no order-of-magnitude win.
-
-### Output files
-
-Upon successful completion the following files are produced:
-
-| Path | Contents |
-|---|---|
-| `fastq_files/SRR.numbers` | List of SRR run accessions downloaded |
-| `transcripts/<SRR>.csv` | Per-sample raw read counts from featureCounts |
-| `data/counts.csv` | Merged annotated count matrix (Ensembl ID + gene info + all samples) |
-| `deg_results.csv` | DESeq2 results ordered by adjusted p-value |
-| `data/plots/PCAPlot.png` | Principal Component Analysis |
-| `data/plots/MAPlot.png` | MA plot (raw LFC) |
-| `data/plots/resMAPlot.png` | MA plot (LFC-shrunken) |
-| `data/plots/VolcanoPlot.png` | Volcano plot of DEGs |
-| `data/plots/DispersionPlot.png` | DESeq2 dispersion plot |
-| `data/plots/HeatmapPairwisePlot.png` | Sample-to-sample distance heatmap |
-| `data/plots/HeatmapDEGPlot.png` | Heatmap of top 2 000 DEGs |
-
-> **Note**: if the specified time limit is insufficient the SLURM job will be terminated automatically. Re-submit with a longer allocation. Snakemake's `--rerun-incomplete` flag (used by default) ensures it picks up where it left off.
-
-## Smoke Tests
-
-Two `sbatch`-able scripts under `tests/` validate the full pipeline end-to-end at a fraction of the cost of a real run. Both run in an isolated workspace under `tests/output/` so they don't clobber a real run's outputs.
-
-| Script | Samples | Reads / sample | Wall time (CPU / GPU) | When to run |
-|---|---:|---:|---:|---|
-| `tests/test_minimal.sh` | 4 | 50 000 | ~15 min / ~10 min | Pre-commit "is anything broken" check |
-| `tests/test_subsampled.sh` | 36 | 100 000 | ~30 min / ~10 min | Full DAG validation at miniature scale |
-
-```sh
-# Fastest possible end-to-end check (CPU)
-sbatch tests/test_minimal.sh
-
-# Same, but on GPU
-sbatch tests/test_minimal.sh --gpu
-
-# 36-sample shape validation
-sbatch tests/test_subsampled.sh --gpu
-```
-
-Both scripts print `PASS` or `FAIL` at the end of their `.out` log based on the presence of `deg_results.csv` and all 7 PNG plots.
-
-## Configuration Reference
-
-Beyond the CLI args, `config.yaml.example` documents these optional keys:
-
-| Key | Default | Purpose |
-|---|---|---|
-| `aligner` | `hisat2` | `hisat2` (CPU) or `parabricks_star` (GPU). Auto-set by `--gpu`. |
-| `download_parallel` | `4` | Concurrent `fasterq-dump` processes. |
-| `deseq_workers` | `1` | BiocParallel workers for DESeq2 (small CPU-only speedup). |
-| `local_reference_fa` | `""` | Skip GRCh38 download; use a pre-staged FASTA path. |
-| `local_reference_gtf` | `""` | Skip GTF download; use a pre-staged annotation path. |
-| `subsample_reads` | `0` | Pass `-X N` to fasterq-dump (testing). |
-| `max_samples` | `0` | Truncate the SRR list to first N (testing). |
+The former Python/Snakemake entry points are retired; see
+[legacy recovery](docs/LEGACY_RECOVERY.md). Report sources and historical evidence
+are retained.

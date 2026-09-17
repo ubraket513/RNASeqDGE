@@ -70,7 +70,7 @@ through small shell stubs. Existing P1/P2 checks remain in this gate.
 The separately installed real-tool gate is:
 
 ```sh
-python3 tests/integration/check_p4_alignment.py
+Rscript --vanilla tests/integration/check_p4_alignment.R
 ```
 
 It builds both indexes at one and two threads, and checks SE/PE jobs for each.
@@ -84,8 +84,8 @@ Context7 samtools documentation was consulted for sorting. The implementation
 uses the installed pinned CLI options, including samtools auxiliary threads and
 featureCounts paired-fragment semantics.
 
-The final real gate also passed inside a network-disabled user namespace:
-`unshare -Urn python3 tests/integration/check_p4_alignment.py`, with transcript
+The historical P4 gate also passed inside a network-disabled user namespace
+using `unshare -Urn` and the pre-migration helper, with transcript
 `tests/output/p4-network-isolated.log` and evidence
 `tests/output/p4-real-hhh9ogyf/verified.json`. The full native check passed with
 AddressSanitizer/UBSan using `-fno-pie`/`-no-pie`; after the final publication fix,
@@ -94,8 +94,9 @@ uses Linux `renameat2(RENAME_NOREPLACE)` and removes the stage's completion mark
 if a competitor creates the output before publication. P4 therefore requires
 Linux with `renameat2` support; this check is distinct from P5 cross-run locking.
 
-The reviewed subprocess boundary prepends `--bin-dir` to each child's PATH, so
-upstream `/usr/bin/env python` and Perl wrappers resolve staged interpreters first.
+The original P4 subprocess boundary prepended `--bin-dir` to each child's PATH
+for upstream interpreter wrappers. P7 now invokes the native HISAT2 binaries
+directly; those interpreter wrappers are not part of the compute runtime.
 It builds a private child environment; the parent PATH is unchanged. Paths with
 spaces or shell metacharacters stay literal; colons in the executable directory
 are rejected because PATH uses colons as separators. Version checks require exact

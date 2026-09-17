@@ -1,2 +1,5 @@
-- run_pipeline.sh itself calls sbatch after generating config.yaml and run_job.sbatch; README's outer sbatch invocation adds a submission layer. It overwrites config rather than merging optional existing settings.
-- tests/test_minimal.sh and tests/test_subsampled.sh submit isolated HPC jobs; inspect their submission paths and dependencies before running. They require network data access and cluster tools.
+- Build/offline gate: make -j2 check. run_pipeline.sh plan|local|submit CONFIG.tsv is the supported launcher; submit requires explicit Slurm configuration. No automatic downloads during compute.
+- Runtime audit: bash tools/check_python_free_runtime.sh .deps/runtime-r .deps/runtime-tools. Installed-tool/R preflight: .deps/runtime-r/bin/Rscript --vanilla tools/toolchain.R preflight --alignment .deps/runtime-tools --r-prefix .deps/runtime-r --out ABSENT_OUTPUT.
+- tests/test_minimal.sh runs make check; tests/test_subsampled.sh CONFIG.tsv runs an explicitly staged reduced local workflow. No GPU flag or implicit data selection.
+- featureCounts2.0.6 can abort under execution sandbox while identical binary/command passes outside; retain logs and test boundary before assuming native bundle corruption.
+- Do not rebuild native binary/edit R script during live workflow: snapshots verify executable/source identities and intentionally invalidate changed software.
