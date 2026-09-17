@@ -1,0 +1,8 @@
+{
+  "c_compiler": "gcc",
+  "CONDA_BUILD_SYSROOT": "",
+  "zlib": "1.2",
+  "channel_targets": "bioconda main",
+  "c_compiler_version": "12",
+  "target_platform": "linux-64"
+}

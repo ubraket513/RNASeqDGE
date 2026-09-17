@@ -1,0 +1,10 @@
+{
+  "zlib": "1.2",
+  "c_compiler_version": "12",
+  "ncurses": "6",
+  "c_compiler": "gcc",
+  "CONDA_BUILD_SYSROOT": "",
+  "htslib": "1.17",
+  "target_platform": "linux-64",
+  "channel_targets": "bioconda main"
+}

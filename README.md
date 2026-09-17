@@ -1,6 +1,9 @@
 # RNA_Seq_Final_Project
 
-> C++ migration planning (implementation pending): start with
+> C++ migration is in progress: local native build and validation instructions
+> are in [Local development](docs/LOCAL_DEVELOPMENT.md). For current gates and
+> remaining work, see [Implementation progress](docs/IMPLEMENTATION_PROGRESS.md),
+> then
 > [the session handoff](docs/SESSION_HANDOFF.md) and
 > [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -62,7 +65,7 @@ sbatch run_pipeline.sh <PRJNA_ID> <HH:MM:SS> <GSE_ACCESSION> [CONDITION_FIELD] [
 
 | Argument | Description | Example |
 |---|---|---|
-| `PRJNA_ID` | NCBI BioProject accession | `PRJNA316873` |
+| `PRJNA_ID` | NCBI BioProject accession | `PRJNA318642` |
 | `HH:MM:SS` | SLURM wall-clock time limit | `24:00:00` |
 | `GSE_ACCESSION` | GEO Series accession for sample metadata | `GSE80336` |
 | `CONDITION_FIELD` | Column in GEO phenoData used to derive group labels (default: `title`) | `title` |
@@ -72,10 +75,10 @@ sbatch run_pipeline.sh <PRJNA_ID> <HH:MM:SS> <GSE_ACCESSION> [CONDITION_FIELD] [
 
 ```sh
 # CPU, ~9–12 hours wall time
-sbatch run_pipeline.sh PRJNA316873 24:00:00 GSE80336 title
+sbatch run_pipeline.sh PRJNA318642 24:00:00 GSE80336 title
 
 # GPU (Parabricks STAR), ~3–4 hours wall time
-sbatch run_pipeline.sh PRJNA316873 04:00:00 GSE80336 title --gpu
+sbatch run_pipeline.sh PRJNA318642 04:00:00 GSE80336 title --gpu
 ```
 
 The script generates `config.yaml` automatically from the arguments above, so no manual file editing is required. To inspect or adjust the configuration beforehand, copy the template:
@@ -83,7 +86,7 @@ The script generates `config.yaml` automatically from the arguments above, so no
 ```sh
 cp config.yaml.example config.yaml
 # edit config.yaml as needed, then:
-sbatch run_pipeline.sh PRJNA316873 24:00:00 GSE80336 title
+sbatch run_pipeline.sh PRJNA318642 24:00:00 GSE80336 title
 ```
 
 While the job runs, monitor its status with `sq`. Logs are written to `logs/rna_seq_analysis_<jobid>.out` and `.err`.

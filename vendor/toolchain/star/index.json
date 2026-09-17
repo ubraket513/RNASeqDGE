@@ -1,0 +1,16 @@
+{
+  "arch": "x86_64",
+  "build": "h6b7c446_1",
+  "build_number": 1,
+  "depends": [
+    "htslib >=1.17,<1.18.0a0",
+    "libgcc-ng >=12",
+    "libstdcxx-ng >=12"
+  ],
+  "license": "GPLv3",
+  "name": "star",
+  "platform": "linux",
+  "subdir": "linux-64",
+  "timestamp": 1684998623683,
+  "version": "2.7.10b"
+}

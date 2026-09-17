@@ -1,0 +1,6 @@
+run_id	format	path	column
+run_c1b	featurecounts	counts/run_c1b.featurecounts.tsv	run_c1b.bam
+run_c2	tsv	../p0/counts/run_c2.tsv	
+run_t1	tsv	../p0/counts/run_t1.tsv	
+run_t2	tsv	../p0/counts/run_t2.tsv	
+run_c1a	legacy	counts/run_c1a.legacy.tsv	

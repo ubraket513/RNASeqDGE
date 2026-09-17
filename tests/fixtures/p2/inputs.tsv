@@ -1,0 +1,6 @@
+run_id	format	path	column
+run_t2	tsv	../p0/counts/run_t2.tsv	
+run_c1a	tsv	../p0/counts/run_c1a.tsv	
+run_c1b	tsv	../p0/counts/run_c1b.tsv	
+run_t1	tsv	../p0/counts/run_t1.tsv	
+run_c2	tsv	../p0/counts/run_c2.tsv	

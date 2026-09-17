@@ -1,0 +1,10 @@
+{
+  "c_compiler_version": "10",
+  "cxx_compiler_version": "10",
+  "htslib": "1.17",
+  "channel_targets": "bioconda main",
+  "CONDA_BUILD_SYSROOT": "",
+  "target_platform": "linux-64",
+  "c_compiler": "gcc",
+  "cxx_compiler": "gxx"
+}

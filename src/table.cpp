@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 
 namespace rnaseq {
 namespace {
@@ -39,7 +40,7 @@ bool valid_utf8(std::string_view text) {
     return true;
 }
 
-// Enforce the restricted manifest dialect before handing decoding to csv-parser.
+// Enforce the restricted project dialect before handing decoding to csv-parser.
 // The upstream parser intentionally accepts a wider CSV dialect than v1.
 std::size_t check_record(const std::string& line, const std::string& source, std::size_t record) {
     if (line.empty()) fail(source, record, "1", "blank records are forbidden");
@@ -72,6 +73,32 @@ std::size_t check_record(const std::string& line, const std::string& source, std
     return column;
 }
 
+std::vector<std::string> decode_record(const std::string& line, const std::string& source,
+                                       std::size_t record, std::size_t fields) {
+    std::istringstream data(line + '\n');
+    csv::CSVFormat format;
+    format.delimiter('\t').quote('"').no_header()
+          .variable_columns(csv::VariableColumnPolicy::THROW).threading(false);
+    csv::CSVReader reader(data, format);
+    csv::CSVRow parsed;
+    if (!reader.read_row(parsed) || parsed.size() != fields)
+        fail(source, record, "1", "parser did not preserve record");
+
+    std::vector<std::string> decoded;
+    decoded.reserve(parsed.size());
+    for (auto& field : parsed) decoded.push_back(field.get<std::string>());
+    if (reader.read_row(parsed)) fail(source, record, "1", "parser did not preserve record");
+    return decoded;
+}
+
+void check_comment(const std::string& line, const std::string& source, std::size_t record) {
+    if (!valid_utf8(line)) fail(source, record, "1", "invalid UTF-8");
+    if (line.find("\xEF\xBB\xBF") != std::string::npos)
+        fail(source, record, "1", "BOM is allowed only at file start");
+    if (line.find_first_of(std::string{"\0\r\n", 3}) != std::string::npos)
+        fail(source, record, "1", "NUL/CR/LF inside a cell");
+}
+
 bool valid_id(const std::string& value) {
     const auto alnum = [](unsigned char c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
@@ -89,41 +116,57 @@ std::size_t column(const Table& table, const std::string& name) {
 }
 }
 
+TsvReader::TsvReader(std::istream& input, std::string source, bool leading_comments)
+    : input_(input), source_(std::move(source)), leading_comments_(leading_comments) {}
+
+bool TsvReader::next(std::vector<std::string>& row) {
+    for (;;) {
+        std::string line;
+        if (!std::getline(input_, line)) {
+            if (input_.bad() || (input_.fail() && !input_.eof()))
+                fail(source_, record_ + 1, "1", "read failure");
+            return false;
+        }
+
+        ++record_;
+        if (record_ == 1 && line.starts_with("\xEF\xBB\xBF")) line.erase(0, 3);
+        // A terminal CR is legal only when getline consumed the LF of a CRLF pair.
+        if (!line.empty() && line.back() == '\r' && !input_.eof()) line.pop_back();
+
+        if (leading_comments_ && !saw_data_ && !line.empty() && line[0] == '#') {
+            check_comment(line, source_, record_);
+            continue;
+        }
+
+        const auto fields = check_record(line, source_, record_);
+        auto decoded = decode_record(line, source_, record_, fields);
+        if (!saw_data_) {
+            width_ = decoded.size();
+            saw_data_ = true;
+        } else if (decoded.size() != width_) {
+            fail(source_, record_, std::to_string(decoded.size()), "ragged row");
+        }
+        row = std::move(decoded);
+        return true;
+    }
+}
+
+std::size_t TsvReader::record() const {
+    return record_;
+}
+
 Table read_table(std::istream& input, const std::string& source) {
     Table table{source, {}, {}};
-    std::string line, normalized;
-    std::size_t record = 0, width = 0;
-    while (std::getline(input, line)) {
-        ++record;
-        if (record == 1 && line.starts_with("\xEF\xBB\xBF")) line.erase(0, 3);
-        // A terminal CR is legal only as part of CRLF, not at EOF.
-        if (!line.empty() && line.back() == '\r' && !input.eof()) line.pop_back();
-        const auto fields = check_record(line, source, record);
-        if (record == 1) width = fields;
-        else if (fields != width) fail(source, record, std::to_string(fields), "ragged row");
-        normalized += line + '\n';
-    }
-    if (input.bad() || (input.fail() && !input.eof())) fail(source, record + 1, "1", "read failure");
-    if (record == 0) fail(source, 1, "1", "empty file");
-    std::istringstream data(normalized);
-    csv::CSVFormat format;
-    format.delimiter('\t').quote('"').header_row(0)
-          .variable_columns(csv::VariableColumnPolicy::THROW).threading(false);
-    csv::CSVReader reader(data, format);
-    table.header = reader.get_col_names();
+    TsvReader reader(input, source);
+    if (!reader.next(table.header)) fail(source, 1, "1", "empty file");
     std::set<std::string> headers;
     for (std::size_t i = 0; i < table.header.size(); ++i) {
         const auto& name = table.header[i];
         if (name.empty() || !headers.insert(name).second)
             fail(source, 1, std::to_string(i + 1), "empty or duplicate header");
     }
-    for (auto& row : reader) {
-        std::vector<std::string> cells;
-        for (auto& field : row) cells.push_back(field.get<std::string>());
-        table.rows.push_back(std::move(cells));
-    }
-    if (table.header.size() != width || table.rows.size() + 1 != record)
-        fail(source, 1, "1", "parser did not preserve all records");
+    std::vector<std::string> row;
+    while (reader.next(row)) table.rows.push_back(row);
     return table;
 }
 

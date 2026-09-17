@@ -1,0 +1,6 @@
+# Program:featureCounts v2.0.6; synthetic format fixture, not aligner output
+Geneid	Chr	Start	End	Strand	Length	unused.bam	run_c1b.bam
+gene_B.2	chrSynthetic	1001	1300	-	300	99	5
+gene_zero	chrSynthetic	2001	2300	+	300	99	0
+gene_A.1	chrSynthetic;chrSynthetic	101;501	300;700	+;+	400	99	4
+gene_C	chrSynthetic	1101	1400	+	300	99	1

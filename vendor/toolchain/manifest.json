@@ -1,0 +1,432 @@
+{
+  "format": 1,
+  "platform": "linux-64",
+  "distribution": "Pinned conda binaries; recipes retained as build provenance, not rebuilt locally.",
+  "transitive_dependencies": "config/alignment-linux-64.provenance.json",
+  "source_hash_scope": "Upstream archive hashes declared by retained recipes; upstream archives not downloaded by this recorder.",
+  "packages": [
+    {
+      "name": "star",
+      "version": "2.7.10b",
+      "build": "h6b7c446_1",
+      "url": "https://conda.anaconda.org/bioconda/linux-64/star-2.7.10b-h6b7c446_1.tar.bz2",
+      "sha256": "60c801de0abed7942d056e2f703c818d6dafcbc0589dd3101ad7219c791bd3ca",
+      "license": "GPLv3",
+      "depends": [
+        "htslib >=1.17,<1.25.0a0",
+        "libgcc-ng >=12",
+        "libstdcxx-ng >=12"
+      ],
+      "source": {
+        "patches": [
+          "patches/0001-do-not-enforce-avx2.patch",
+          "patches/0002-donotuse_own_htslib.patch",
+          "patches/0003-create-simd-dispatch.patch"
+        ],
+        "sha256": "0d1b71de6c5be1c5d90b32130d2abcd5785a4fc7c1e9bf19cc391947f2dc46e5",
+        "url": "https://github.com/alexdobin/STAR/archive/2.7.10b.tar.gz"
+      },
+      "recipe": "vendor/toolchain/star/recipe/meta.yaml",
+      "build_script": "vendor/toolchain/star/recipe/build.sh",
+      "build_flags_scope": "Literal upstream recipe scripts and conda_build_config.yaml retained; no local rebuild claim."
+    },
+    {
+      "name": "hisat2",
+      "version": "2.2.1",
+      "build": "h503566f_8",
+      "url": "https://conda.anaconda.org/bioconda/linux-64/hisat2-2.2.1-h503566f_8.tar.bz2",
+      "sha256": "c413a90c535a385e7bad2bc8bd968ff2db185b5850b8fbbf214fc97602d57642",
+      "license": "GPL-3.0",
+      "depends": [
+        "libgcc >=13",
+        "libstdcxx >=13",
+        "perl",
+        "python >3.5"
+      ],
+      "source": {
+        "patches": [
+          "0001-Rename-VERSION-to-VERSION.txt.patch",
+          "simde-mr-c.patch"
+        ],
+        "sha256": "f3f4f867d0a6b1f880d64efc19deaa5788c62050e0a4d614ce98b3492f702599",
+        "url": "https://github.com/DaehwanKimLab/hisat2/archive/v2.2.1.tar.gz"
+      },
+      "recipe": "vendor/toolchain/hisat2/recipe/meta.yaml",
+      "build_script": "vendor/toolchain/hisat2/recipe/build.sh",
+      "build_flags_scope": "Literal upstream recipe scripts and conda_build_config.yaml retained; no local rebuild claim."
+    },
+    {
+      "name": "subread",
+      "version": "2.0.6",
+      "build": "he4a0461_2",
+      "url": "https://conda.anaconda.org/bioconda/linux-64/subread-2.0.6-he4a0461_2.tar.bz2",
+      "sha256": "00722036a6f8e451c6a41b9232d935163ae1d6623e69908cfa5317feb6e7849a",
+      "license": "GPL-3.0-only",
+      "depends": [
+        "libgcc-ng >=12",
+        "libzlib >=1.2.13,<1.3.0a0"
+      ],
+      "source": {
+        "patches": [
+          "unsignedchar.patch"
+        ],
+        "sha256": "f0fdda6b98634d2946028948c220253e10a0f27c7fa5f24913b65b3ac6cbb045",
+        "url": "https://downloads.sourceforge.net/project/subread/subread-2.0.6/subread-2.0.6-source.tar.gz"
+      },
+      "recipe": "vendor/toolchain/subread/recipe/meta.yaml",
+      "build_script": "vendor/toolchain/subread/recipe/build.sh",
+      "build_flags_scope": "Literal upstream recipe scripts and conda_build_config.yaml retained; no local rebuild claim."
+    },
+    {
+      "name": "samtools",
+      "version": "1.17",
+      "build": "hd87286a_2",
+      "url": "https://conda.anaconda.org/bioconda/linux-64/samtools-1.17-hd87286a_2.tar.bz2",
+      "sha256": "d74c1f71fb77a134019d144b4e7acf73226c529c6db277f58655e1ffb927b7e8",
+      "license": "MIT",
+      "depends": [
+        "htslib >=1.17,<1.25.0a0",
+        "libgcc-ng >=12",
+        "libzlib >=1.2.13,<1.3.0a0",
+        "ncurses >=6.4,<7.0a0",
+        "zlib"
+      ],
+      "source": {
+        "sha256": "3adf390b628219fd6408f14602a4c4aa90e63e18b395dad722ab519438a2a729",
+        "url": "https://github.com/samtools/samtools/releases/download/1.17/samtools-1.17.tar.bz2"
+      },
+      "recipe": "vendor/toolchain/samtools/recipe/meta.yaml",
+      "build_script": "vendor/toolchain/samtools/recipe/build.sh",
+      "build_flags_scope": "Literal upstream recipe scripts and conda_build_config.yaml retained; no local rebuild claim."
+    },
+    {
+      "name": "htslib",
+      "version": "1.21",
+      "build": "h5efdd21_0",
+      "url": "https://conda.anaconda.org/bioconda/linux-64/htslib-1.21-h5efdd21_0.tar.bz2",
+      "sha256": "ef5a53fae052a14cbccc50dc2290c80791db3d8a8c5a01435c7aa12f8a53740c",
+      "license": "MIT",
+      "depends": [
+        "bzip2 >=1.0.8,<2.0a0",
+        "libcurl >=8.8.0,<9.0a0",
+        "libdeflate >=1.20,<1.27.0a0",
+        "libgcc >=12",
+        "libzlib >=1.2.13,<2.0a0",
+        "openssl >=3.3.2,<4.0a0",
+        "xz >=5.2.6,<6.0a0"
+      ],
+      "source": {
+        "patches": [
+          "arm_hwcap.patch"
+        ],
+        "sha256": "84b510e735f4963641f26fd88c8abdee81ff4cb62168310ae716636aac0f1823",
+        "url": "https://github.com/samtools/htslib/releases/download/1.21/htslib-1.21.tar.bz2"
+      },
+      "recipe": "vendor/toolchain/htslib/recipe/meta.yaml",
+      "build_script": "vendor/toolchain/htslib/recipe/build.sh",
+      "build_flags_scope": "Literal upstream recipe scripts and conda_build_config.yaml retained; no local rebuild claim."
+    }
+  ],
+  "retained_files": [
+    {
+      "path": "vendor/toolchain/hisat2/about.json",
+      "sha256": "d0970bda93a295e5e4134ebf6fa29c8401d184fb1a5b276bfd2f932569adec48"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/git",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/hash_input.json",
+      "sha256": "c4c547abe5c785e5f340928d1eba0f54778ca64210a1b815c926f939887b71b3"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/index.json",
+      "sha256": "3a259fb7a82eab6d800e4f4bacf97d7649361dba0351369a92c96910635afa01"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/licenses/LICENSE",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/recipe/0001-Rename-VERSION-to-VERSION.txt.patch",
+      "sha256": "050bdcb35197f393f85fc569a08a1ea14a44458526176fd08688c9c155c4e06f"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/recipe/build.sh",
+      "sha256": "570425d8674bb6e625b4051e6a4979ea8517afab5863639854290868b9bd9ddf"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/recipe/conda_build_config.yaml",
+      "sha256": "7ab2e354a8eae463fb842a6546cb07a56a2aae0284a88116998b50f1c02924b1"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/recipe/meta.yaml",
+      "sha256": "1816bfcf6acc6ce6f69027f58e238f66cde2861bc910e8bc89f0747d9a348ebd"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/recipe/meta.yaml.template",
+      "sha256": "6d629b0c630d24d737e08528c201c7295f1fe9b82b919fe0060e4287b5c9be94"
+    },
+    {
+      "path": "vendor/toolchain/hisat2/recipe/simde-mr-c.patch",
+      "sha256": "4bc001f7c16d50748f23dbf5e9c73ee8a160f77c737a501d29f266e82f671881"
+    },
+    {
+      "path": "vendor/toolchain/htslib/about.json",
+      "sha256": "f40b4f1dafdbff5453a86e0c580e4ea24e0c1a7f8718b70f75c8c9618f0cb30e"
+    },
+    {
+      "path": "vendor/toolchain/htslib/git",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "vendor/toolchain/htslib/hash_input.json",
+      "sha256": "ea500bd8b948ef33c0d85e17cf6c37a1fa0ea7f7f6d6677084918ee0496aae03"
+    },
+    {
+      "path": "vendor/toolchain/htslib/index.json",
+      "sha256": "ccf994dbf808d481409b9a1ac1d2b9db0b08c52b7076deb4896108a53fb7664d"
+    },
+    {
+      "path": "vendor/toolchain/htslib/licenses/LICENSE",
+      "sha256": "36f9f7462cec2461a6b60c058792f6b5e8828db9c1e91a98ee64e2e58fc3d080"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/1.1/build.sh",
+      "sha256": "cffb0e006bf295d62c7baab5d7fcee68472c232546502793c0b14bb9dc26e7a1"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/1.1/meta.yaml",
+      "sha256": "79811752594f240100f770019807171e2c29261a55478650182ee5c2d83bbc6d"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/1.3.1/build.sh",
+      "sha256": "0ece8647663c3619946b8f7b7ccd0da6efc73eebd19c01a1889aef08cf46c0f3"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/1.3.1/meta.yaml",
+      "sha256": "edb3b5d04e08dc3c31d57285703b490ad51c7263fc9d700c569997fb122f209e"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/arm_hwcap.patch",
+      "sha256": "8f14d2eb86148132b5bbcf0071172ac9687099f15e12c9cb1af8ba25c91a0b5a"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/build.sh",
+      "sha256": "0e977f5754cef9dfa7d524bef5ea1361ab481a076b6bf4baa62f93677ef31874"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/conda_build_config.yaml",
+      "sha256": "645e347f95e6843b0f79bb29958d0ec64713428112c1d1b6d3d88e959950db3d"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/meta.yaml",
+      "sha256": "25fb0440e698893ddef7de59e478acf6bcf1dc7d46a406b8659549e090ebe992"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/meta.yaml.template",
+      "sha256": "aa7d368a1c1f5c0194c48bfe6d57887ef075f836b2bbac16b2bb3730711d01b8"
+    },
+    {
+      "path": "vendor/toolchain/htslib/recipe/test1.bed",
+      "sha256": "8717516d857721a3d63a2f49469372ca49315452f6683ec28a9e465ba62df693"
+    },
+    {
+      "path": "vendor/toolchain/samtools/about.json",
+      "sha256": "f5f562d25ba2adac55399b30921bae3e53f7b7c6cd54365798bdeac5d2e4f973"
+    },
+    {
+      "path": "vendor/toolchain/samtools/git",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "vendor/toolchain/samtools/hash_input.json",
+      "sha256": "3ce5bd1745dd93895de33202ca4c00cff3f62b246cc6ec7976596d32d3190d14"
+    },
+    {
+      "path": "vendor/toolchain/samtools/index.json",
+      "sha256": "9e14f9e0ae87afd6cdba26c89169c8e8a6ed1b34bcd42db3a8e288cba6a9e118"
+    },
+    {
+      "path": "vendor/toolchain/samtools/licenses/LICENSE",
+      "sha256": "1ae5d591f1717e7e040ed31777c883ed7318e20eeb69ee358c45b9acb4388a4e"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/0.1.18/build.sh",
+      "sha256": "2be16fc8f48d56bf3e93fd97d2c0ffdba835f3c89415ea4b1c1bc8c29bdc61d4"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/0.1.18/meta.yaml",
+      "sha256": "929b843f2ce776933106e2eff1b8b152d11c5fbbdba16b13b6d8bcaa3d3a71a6"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/0.1.19/build.sh",
+      "sha256": "c544649c39d5627d128dc8204b63f3f4182723f981697d613fe92b5fdb4f20b4"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/0.1.19/meta.yaml",
+      "sha256": "a7b350f66db2501d2ebccb68096fcba91b6fa7c3afecc436333e8105dadc03cc"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.1/build.sh",
+      "sha256": "fed14ec795dfed4b489e2f0c880d4407c1f45e7ccce79f9d837febeb148fbbd2"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.1/meta.yaml",
+      "sha256": "8bc42459e468310c90260ddbdcf7d693c6c60f52c5fca4ff0a6970e9d46bab78"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.3/build.sh",
+      "sha256": "327586e4fe0edad7b27062780031384a3e725af7596fb1ffe464e35e1b8c00ba"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.3/meta.yaml",
+      "sha256": "589cf8c92174ad42eceef39f19381ac70208e9461c8cb859639bbecf971f3cee"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.3.1/build.sh",
+      "sha256": "de620d9607a073b5ae664b3a0c3f03448d6feef6021ab61efb81ca43b053a867"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.3.1/meta.yaml",
+      "sha256": "83d22e23365d6a5e902aa4660eb793cf383fb52f4c8fc1b4ba426479c556a97e"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.6/build.sh",
+      "sha256": "327586e4fe0edad7b27062780031384a3e725af7596fb1ffe464e35e1b8c00ba"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/1.6/meta.yaml",
+      "sha256": "07cbed53148df8ebc9b65c819b1d81c2ca9e4cd72b3a3f5275bc3c87494a2fe9"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/build.sh",
+      "sha256": "395ad437f2f49d95315dc15af3c78e451d8d8089a1395304c0b407c18645452f"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/conda_build_config.yaml",
+      "sha256": "673ed5023ee68cc3f0bc98d8fde708b76e30dd1986bb95951b991a74e09f9493"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/meta.yaml",
+      "sha256": "a5716ebc844a3824d7856486001d2f987da7d6795192ad36b649ba21fca3aed3"
+    },
+    {
+      "path": "vendor/toolchain/samtools/recipe/meta.yaml.template",
+      "sha256": "e734a6a8623aae968fa2da4c75fbabcd0b26678fa655ea421ef67ff7e5029faf"
+    },
+    {
+      "path": "vendor/toolchain/star/about.json",
+      "sha256": "005b6ef345fff3aada684e5f94dd78865175d1bf41e384c5883320252a3caa14"
+    },
+    {
+      "path": "vendor/toolchain/star/git",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "vendor/toolchain/star/hash_input.json",
+      "sha256": "6d5bdc9253aa640d5c6982eb1f6d48016b351decc22e7a2f59b0535a512dbba6"
+    },
+    {
+      "path": "vendor/toolchain/star/index.json",
+      "sha256": "8f3b5b0cad5510ba86a6eeb4b1b95dad3c5cc9b4fcde75cf6afbd2bbc3cff220"
+    },
+    {
+      "path": "vendor/toolchain/star/licenses/LICENSE",
+      "sha256": "551e5bc4f91bf85b75c848aabba5acbcff4f4adf75e606cd17787038a155e69f"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/2.4.0j/build.sh",
+      "sha256": "662f24410f90d4645ae292838cb385388b98e4f34683cd1057ae9c366f42be7c"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/2.4.0j/meta.yaml",
+      "sha256": "24af6c9c7ccf14ee97547d9b7a2466a612896cb3626776a566543009d1f20694"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/2.6.0c/build.sh",
+      "sha256": "662f24410f90d4645ae292838cb385388b98e4f34683cd1057ae9c366f42be7c"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/2.6.0c/meta.yaml",
+      "sha256": "04748860ff9f13541c58285cb517e4c451a64929b454d89298fa9a322587e9aa"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/2.6.1d/build.sh",
+      "sha256": "662f24410f90d4645ae292838cb385388b98e4f34683cd1057ae9c366f42be7c"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/2.6.1d/meta.yaml",
+      "sha256": "7b4d61544e6be1c28a3370e2b3ecc6078b18ef8be637a799091d375858d26084"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/build.sh",
+      "sha256": "75f26f842d04d1811df10fab4aa1ff059a31f3b8efed96cdefe85d91dbeaca6b"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/conda_build_config.yaml",
+      "sha256": "d446b9ed2d0415b566fc668bb89a0ad3cdce907e9ec0f39553ab38bac313601f"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/meta.yaml",
+      "sha256": "30f7656e770ef8829790c38b2a71245c0c3883ac62e933a354c107f7efd2255a"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/meta.yaml.template",
+      "sha256": "4681377b989cc0eb7c1815569ca511ce81631a59a537ab5adbd9c8f97ef5fab6"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/patches/0001-do-not-enforce-avx2.patch",
+      "sha256": "a1d52d32c3e19aa219118e40b852522f4cc75aba554a5ab8b4540c6dc82bc922"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/patches/0002-donotuse_own_htslib.patch",
+      "sha256": "19f5d5682040c06d55706a9523723f2f66c3062c113477a5144c0bf0384209b9"
+    },
+    {
+      "path": "vendor/toolchain/star/recipe/patches/0003-create-simd-dispatch.patch",
+      "sha256": "5e349f8737fdae2057af525eb36c95a19bc965a286b9b90ba970296f23187ee8"
+    },
+    {
+      "path": "vendor/toolchain/subread/about.json",
+      "sha256": "f020c4a78037ae1ae273129e072e74cd5697459270fcc89286834bd941da2844"
+    },
+    {
+      "path": "vendor/toolchain/subread/git",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "vendor/toolchain/subread/hash_input.json",
+      "sha256": "cae37247c996631cc12eaae69c1f0fb9d7ea0e01ed9fd9736a2fcbde14e89d83"
+    },
+    {
+      "path": "vendor/toolchain/subread/index.json",
+      "sha256": "ec0b69f1c0e832e36e70c9df0ec5003cdc83ddb58a5857a986dac45e59788df8"
+    },
+    {
+      "path": "vendor/toolchain/subread/licenses/LICENSE",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "vendor/toolchain/subread/recipe/build.sh",
+      "sha256": "d1e21d83184c29e4a69258a09ab466b141476b86559d4bd52e7a9e0b7478ba5e"
+    },
+    {
+      "path": "vendor/toolchain/subread/recipe/conda_build_config.yaml",
+      "sha256": "bc46355d05f5512e67aa8ea3b7b4d7f6a31f1e8dd55a1c23193a6d11d9696095"
+    },
+    {
+      "path": "vendor/toolchain/subread/recipe/meta.yaml",
+      "sha256": "3acee6f3179238b66e1170c422730bf6e1b9fb32d6ce131004a7f6d7ad4a7df0"
+    },
+    {
+      "path": "vendor/toolchain/subread/recipe/meta.yaml.template",
+      "sha256": "208ddfe46d0189704955c1979870d8e94b86f23ef15268f42bbab3447461591b"
+    },
+    {
+      "path": "vendor/toolchain/subread/recipe/unsignedchar.patch",
+      "sha256": "77ae09d3069ac4babff51d74761ffb2f7da9480c96b2dc39b73bc0b8c8d466e8"
+    }
+  ]
+}

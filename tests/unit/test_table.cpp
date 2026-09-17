@@ -24,6 +24,74 @@ TEST_CASE("quoted cells, CRLF, initial BOM, empty optional cells and UTF-8") {
     CHECK(parse("x\ny").rows[0][0] == "y");
 }
 
+TEST_CASE("streaming TSV records are consumed lazily") {
+    std::istringstream input("gene_id\tcount\nvalid\t1\n\"unterminated\t2\n");
+    rnaseq::TsvReader reader(input, "lazy.tsv");
+    std::vector<std::string> row;
+
+    CHECK(reader.record() == 0);
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"gene_id", "count"});
+    CHECK(reader.record() == 1);
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"valid", "1"});
+    CHECK(reader.record() == 2);
+    CHECK_THROWS_WITH(reader.next(row), doctest::Contains("lazy.tsv: record 3, column 1"));
+    CHECK(reader.record() == 3);
+}
+
+TEST_CASE("streaming TSV records preserve strict decoded cells") {
+    std::istringstream input("\xEF\xBB\xBFgene_id\tnote\tcount\r\n"
+                             "유전자\t\"say \"\"hello\"\"\"\t0\r\n");
+    rnaseq::TsvReader reader(input, "stream.tsv");
+    std::vector<std::string> row;
+
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"gene_id", "note", "count"});
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"유전자", "say \"hello\"", "0"});
+    CHECK_FALSE(reader.next(row));
+    CHECK(reader.record() == 2);
+}
+
+TEST_CASE("streaming TSV reader supports headerless records") {
+    std::istringstream input("gene-a\t4\ngene-b\t0\n");
+    rnaseq::TsvReader reader(input, "legacy.tsv");
+    std::vector<std::string> row;
+
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"gene-a", "4"});
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"gene-b", "0"});
+    CHECK_FALSE(reader.next(row));
+}
+
+TEST_CASE("featureCounts comments are allowed only before data") {
+    std::istringstream input("\xEF\xBB\xBF# Program:featureCounts\n"
+                             "# Command:featureCounts -a genes.gtf\n"
+                             "Geneid\tcount\n"
+                             "#late\t1\n");
+    rnaseq::TsvReader reader(input, "featurecounts.txt", true);
+    std::vector<std::string> row;
+
+    REQUIRE(reader.next(row));
+    CHECK(row == std::vector<std::string>{"Geneid", "count"});
+    CHECK(reader.record() == 3);
+    CHECK_THROWS_WITH(reader.next(row),
+                      doctest::Contains("featurecounts.txt: record 4, column 1: comments are forbidden"));
+}
+
+TEST_CASE("streaming TSV reader rejects late ragged records") {
+    std::istringstream input("gene_id\tcount\ngene-a\t1\ngene-b\n");
+    rnaseq::TsvReader reader(input, "ragged.tsv");
+    std::vector<std::string> row;
+
+    REQUIRE(reader.next(row));
+    REQUIRE(reader.next(row));
+    CHECK_THROWS_WITH(reader.next(row),
+                      doctest::Contains("ragged.tsv: record 3, column 1: ragged row"));
+}
+
 TEST_CASE("malformed records never disappear") {
     for (const std::string text : {"", "x\tx\n1\t2\n", "x\t\n1\t2\n",
         "x\ty\n1\n", "x\ty\n1\t2\t3\n", "x\ny\n\n", "x\n#comment\n",

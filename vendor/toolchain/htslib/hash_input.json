@@ -1,0 +1,13 @@
+{
+  "CONDA_BUILD_SYSROOT": "",
+  "c_compiler": "gcc",
+  "openssl": "3",
+  "channel_targets": "bioconda main",
+  "zlib": "1.2",
+  "bzip2": "1",
+  "xz": "5",
+  "libcurl": "8",
+  "target_platform": "linux-64",
+  "c_compiler_version": "12",
+  "libdeflate": "1.20"
+}

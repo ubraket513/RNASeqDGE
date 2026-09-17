@@ -1,0 +1,77 @@
+# This file created by conda-build 24.7.1
+# meta.yaml template originally from:
+# /opt/recipe, last modified Thu Dec 12 14:59:10 2024
+# ------------------------------------------------
+
+package:
+  name: hisat2
+  version: 2.2.1
+source:
+  patches:
+    - 0001-Rename-VERSION-to-VERSION.txt.patch
+    - simde-mr-c.patch
+  sha256: f3f4f867d0a6b1f880d64efc19deaa5788c62050e0a4d614ce98b3492f702599
+  url: https://github.com/DaehwanKimLab/hisat2/archive/v2.2.1.tar.gz
+build:
+  number: '8'
+  run_exports: hisat2 >=2.2.1,<3.0a0
+  string: h503566f_8
+requirements:
+  build:
+    - _libgcc_mutex 0.1 conda_forge
+    - _openmp_mutex 4.5 2_gnu
+    - binutils_impl_linux-64 2.43 h4bf12b8_2
+    - binutils_linux-64 2.43 h4852527_2
+    - gcc_impl_linux-64 13.3.0 hfea6d02_1
+    - gcc_linux-64 13.3.0 hc28eda2_7
+    - gxx_impl_linux-64 13.3.0 hdbfa832_1
+    - gxx_linux-64 13.3.0 h6834431_7
+    - kernel-headers_linux-64 3.10.0 he073ed8_18
+    - ld_impl_linux-64 2.43 h712a8e2_2
+    - libgcc 14.2.0 h77fa898_1
+    - libgcc-devel_linux-64 13.3.0 h84ea5a7_101
+    - libgomp 14.2.0 h77fa898_1
+    - libsanitizer 13.3.0 heb74ff8_1
+    - libstdcxx 14.2.0 hc0a3c3a_1
+    - libstdcxx-devel_linux-64 13.3.0 h84ea5a7_101
+    - make 4.4.1 hb9d3cd8_2
+    - sysroot_linux-64 2.17 h4a8ded7_18
+    - tzdata 2024b hc8b5060_0
+  host:
+    - _libgcc_mutex 0.1 conda_forge
+    - _openmp_mutex 4.5 2_gnu
+    - libgcc 14.2.0 h77fa898_1
+    - libgomp 14.2.0 h77fa898_1
+    - libstdcxx 14.2.0 hc0a3c3a_1
+  run:
+    - libgcc >=13
+    - libstdcxx >=13
+    - perl
+    - python >3.5
+test:
+  commands:
+    - hisat2 --help | grep -F 2.2.1
+about:
+  description: HISAT2 is a fast and sensitive alignment program for mapping next-generation
+    sequencing reads (both DNA and RNA) to a population of human genomes as well as
+    to a single reference genome.
+  dev_url: https://github.com/DaehwanKimLab/hisat2
+  doc_url: https://daehwankimlab.github.io/hisat2/manual/
+  home: http://daehwankimlab.github.io/hisat2
+  license: GPL-3.0
+  license_family: GPL
+  license_file: LICENSE
+  summary: Graph-based alignment of next generation sequencing reads to a population
+    of genomes.
+extra:
+  additional-platforms:
+    - linux-aarch64
+    - osx-arm64
+  copy_test_source_files: true
+  final: true
+  identifiers:
+    - biotools:HISAT2
+    - doi:10.1038/nmeth.3317
+    - doi:10.1038/s41587-019-0201-4
+    - usegalaxy-eu:hisat2
+  notes: Pre-built indices for HISAT2 can be downloaded from https://daehwankimlab.github.io/hisat2/download/.

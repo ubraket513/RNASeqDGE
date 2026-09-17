@@ -1,0 +1,34 @@
+{
+  "study": "GSE80336",
+  "bioproject": "PRJNA318642",
+  "sra_study": "SRP073382",
+  "retrieved": "2026-09-17",
+  "reference": {
+    "assembly": "GCF_000001405.40_GRCh38.p14",
+    "checksum_source": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/md5checksums.txt",
+    "files": {
+      "GCF_000001405.40_GRCh38.p14_genomic.fna.gz": {
+        "url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz",
+        "md5": "c30471567037b2b2389d43c908c653e1"
+      },
+      "GCF_000001405.40_GRCh38.p14_genomic.gtf.gz": {
+        "url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.gtf.gz",
+        "md5": "a561524a1ac438a2a95aed54d00e490e"
+      }
+    }
+  },
+  "files": {
+    "GSE80336_family.soft.gz": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE80nnn/GSE80336/soft/GSE80336_family.soft.gz",
+      "sha256": "83a14226c87d485264f529267c5dcd35d7a468fe6cc62fe6fd5f7ccaaf9ed957"
+    },
+    "GSE80336_Counts.txt.gz": {
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE80nnn/GSE80336/suppl/GSE80336_Counts.txt.gz",
+      "sha256": "32cd08dedbe981a16d4ff3177ee9af1f3ba56b7d4dfc97cdf1fd49e071ffbc91"
+    },
+    "ena-runs.tsv": {
+      "url": "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=PRJNA318642&result=read_run&fields=run_accession,experiment_accession,sample_accession,study_accession,library_layout,library_strategy,read_count,base_count,fastq_ftp,fastq_md5,fastq_bytes&format=tsv",
+      "sha256": "a6635f35de7784d470f42b5acf4225d7a3533a5505ab3e9158111f6b74224d9c"
+    }
+  }
+}
