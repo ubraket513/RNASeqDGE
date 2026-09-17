@@ -51,7 +51,7 @@ bool pinned_version(const std::string& executable, const std::string& output,
         if (delimiter == std::string::npos || line.substr(delimiter + 9) != expected) return false;
         // HISAT2 prints either its wrapper name or a full native executable path.
         const auto name = fs::path(line.substr(0, delimiter)).filename().string();
-        if (executable == "hisat2-build")
+        if (executable == "hisat2-build-s")
             return name == "hisat2-build" || name == "hisat2-build-s" || name == "hisat2-build-l";
         return name == "hisat2" || name == "hisat2-align-s" || name == "hisat2-align-l";
     }
@@ -89,7 +89,7 @@ void alignment_command(int argc, char** argv) {
     const fs::path output = fs::absolute(required("--output")).lexically_normal();
     readable(fasta); readable(gtf);
     if (fs::exists(fs::symlink_status(output)) || !fs::is_directory(output.parent_path())) throw std::runtime_error("output must be absent with an existing parent");
-    std::vector<std::string> executables{backend == "star" ? "STAR" : indexing ? "hisat2-build" : "hisat2"};
+    std::vector<std::string> executables{backend == "star" ? "STAR" : indexing ? "hisat2-build-s" : "hisat2-align-s"};
     if (!indexing) { executables.push_back("samtools"); executables.push_back("featureCounts"); }
     for (const auto& executable : executables)
         if (!fs::is_regular_file(bin / executable) || access((bin / executable).c_str(), X_OK)) throw std::runtime_error("missing executable: " + (bin / executable).string());
@@ -137,7 +137,7 @@ void alignment_command(int argc, char** argv) {
         const auto t = std::to_string(threads);
         if (indexing) {
             if (backend == "star") run("index", {(bin / "STAR").string(), "--runMode", "genomeGenerate", "--runThreadN", t, "--genomeDir", stage.string(), "--genomeFastaFiles", fasta.string(), "--genomeSAindexNbases", std::to_string(sa), "--genomeChrBinNbits", std::to_string(chr), "--outFileNamePrefix", (stage / "star-").string()});
-            else run("index", {(bin / "hisat2-build").string(), "-p", t, fasta.string(), (stage / "genome").string()});
+            else run("index", {(bin / "hisat2-build-s").string(), "--wrapper", "basic-0", "-p", t, fasta.string(), (stage / "genome").string()});
             for (const auto& file : index_files(backend)) readable(stage / file);
             write(stage / "index.tsv", identity + "threads\t" + t + "\nstar_sa_bases\t" + std::to_string(sa) + "\nstar_chr_bits\t" + std::to_string(chr) + "\n");
         } else {
@@ -150,7 +150,7 @@ void alignment_command(int argc, char** argv) {
                 args.insert(args.end(), {"--outFileNamePrefix", (stage / "star-").string(), "--outSAMtype", "BAM", "Unsorted"});
             } else {
                 unsorted = stage / "aligned.sam";
-                args = {(bin / "hisat2").string(), "-p", t, "-x", (index / "genome").string()};
+                args = {(bin / "hisat2-align-s").string(), "--wrapper", "basic-0", "-p", t, "-x", (index / "genome").string()};
                 if (layout == "paired") args.insert(args.end(), {"-1", reads1.string(), "-2", reads2.string()});
                 else args.insert(args.end(), {"-U", reads1.string()});
                 if (strand != "unstranded") args.insert(args.end(), {"--rna-strandness", layout == "paired" ? (strand == "forward" ? "FR" : "RF") : (strand == "forward" ? "F" : "R")});

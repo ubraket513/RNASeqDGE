@@ -9,6 +9,7 @@
 #include <charconv>
 #include <chrono>
 #include <memory>
+#include <limits>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -19,6 +20,8 @@
 #include <sstream>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/resource.h>
+#include <sched.h>
 #include <unistd.h>
 namespace rnaseq { namespace {
 namespace fs = std::filesystem;
@@ -83,11 +86,12 @@ struct Workflow {
     Settings c; fs::path config,run,exe,fasta,gtf; Table runs,refs; std::string source_identity;
     std::map<std::string,std::string> snapshots;
     std::vector<fs::path> sources;
-    int threads=1,workers=1;
+    int threads=1,workers=1,local_jobs=1,local_cpus=1,local_mem_mb=0,local_job_mem_mb=0;
+    bool memory_fallback=true;
     explicit Workflow(const fs::path& path) {
         config=fs::canonical(path); const auto base=config.parent_path();
         auto t=read_table(config.string()); if(t.header!=std::vector<std::string>{"key","value"})fail("config header must be key/value");
-        const std::set<std::string> allowed{"samples","runs","references","analysis","contrasts","genes","annotation","bin_dir","rscript","r_script","tool_lock","r_lock","run_dir","index_cache","backend","threads","workers","star_sa_bases","star_chr_bits","slurm_bin_dir","slurm_cpus","slurm_mem_mb","slurm_time","slurm_partition","slurm_concurrency"};
+        const std::set<std::string> allowed{"samples","runs","references","analysis","contrasts","genes","annotation","bin_dir","rscript","r_script","tool_lock","r_lock","run_dir","index_cache","backend","threads","workers","star_sa_bases","star_chr_bits","slurm_bin_dir","slurm_cpus","slurm_mem_mb","slurm_time","slurm_partition","slurm_concurrency","local_jobs","local_cpus","local_mem_mb","local_job_mem_mb"};
         for(const auto& r:t.rows){if(!allowed.count(r[0])||r[1].empty()||!c.emplace(r[0],r[1]).second)fail("unknown, empty or duplicate config key: "+r[0]);clean(r[1]);}
         for(const auto& k:{"samples","runs","references","analysis","contrasts","genes","bin_dir","rscript","r_script","tool_lock","r_lock","run_dir"})if(!c.count(k))fail(std::string("required config key: ")+k);
         for(const auto& [k,v]:Settings{{"backend","hisat2"},{"threads","1"},{"workers","1"},{"star_sa_bases","14"},{"star_chr_bits","18"},{"slurm_concurrency","1"}})if(!c.count(k))c[k]=v;
@@ -95,6 +99,30 @@ struct Workflow {
         threads=number(c.at("threads"),"threads");workers=number(c.at("workers"),"workers");number(c.at("slurm_concurrency"),"slurm_concurrency");
         if(number(c.at("star_sa_bases"),"star_sa_bases")>14||number(c.at("star_chr_bits"),"star_chr_bits")>18)fail("STAR sizing exceeds allowed bounds");
         if(const char* budget=getenv("SLURM_CPUS_PER_TASK"))if(std::max(threads,workers)>number(budget,"SLURM_CPUS_PER_TASK"))fail("threads/workers exceeds SLURM_CPUS_PER_TASK");
+        cpu_set_t affinity; CPU_ZERO(&affinity);
+        local_cpus=sched_getaffinity(0,sizeof(affinity),&affinity)==0?CPU_COUNT(&affinity):1;
+        if(c.count("local_cpus"))local_cpus=std::min(local_cpus,number(c.at("local_cpus"),"local_cpus"));
+        if(const char* budget=getenv("SLURM_CPUS_PER_TASK"))local_cpus=std::min(local_cpus,number(budget,"SLURM_CPUS_PER_TASK"));
+        if(std::max(threads,workers)>local_cpus)fail("threads/workers exceeds resolved local CPU budget");
+        local_jobs=c.count("local_jobs")?number(c.at("local_jobs"),"local_jobs"):local_cpus/threads;
+        local_jobs=std::min(local_jobs,local_cpus/threads);
+        if(c.count("local_mem_mb"))local_mem_mb=number(c.at("local_mem_mb"),"local_mem_mb");
+        if(c.count("local_job_mem_mb"))local_job_mem_mb=number(c.at("local_job_mem_mb"),"local_job_mem_mb");
+        if(const char* memory=getenv("SLURM_MEM_PER_NODE")) {
+            const int allocated=number(memory,"SLURM_MEM_PER_NODE");
+            local_mem_mb=local_mem_mb?std::min(local_mem_mb,allocated):allocated;
+        }
+        if(const char* memory=getenv("SLURM_MEM_PER_CPU")) {
+            const auto allocated=std::min<long long>(std::numeric_limits<int>::max(),
+                static_cast<long long>(number(memory,"SLURM_MEM_PER_CPU"))*local_cpus);
+            local_mem_mb=local_mem_mb?std::min(local_mem_mb,static_cast<int>(allocated)):static_cast<int>(allocated);
+        }
+        memory_fallback=!local_mem_mb || !local_job_mem_mb;
+        if(memory_fallback)local_jobs=1;
+        else {
+            if(local_job_mem_mb>local_mem_mb)fail("local_job_mem_mb exceeds resolved memory budget");
+            local_jobs=std::min(local_jobs,local_mem_mb/local_job_mem_mb);
+        }
         if(c.count("slurm_cpus")&&number(c.at("slurm_cpus"),"slurm_cpus")<std::max(threads,workers))fail("slurm_cpus smaller than threads/workers");
         if(c.count("slurm_mem_mb"))number(c.at("slurm_mem_mb"),"slurm_mem_mb");
         if(c.count("slurm_time") && c.at("slurm_time").find_first_not_of("0123456789:-")!=std::string::npos)fail("slurm_time must use numeric Slurm time syntax");
@@ -124,7 +152,7 @@ struct Workflow {
         snapshots["runs.tsv"]=table_text(runs); snapshots["references.tsv"]=table_text(refs);
         std::string resolved="key\tvalue\n";for(const auto& [k,v]:c)resolved+=k+"\t"+v+"\n";snapshots["config.tsv"]=resolved;
         const auto bin=fs::path(c.at("bin_dir"));
-        for(const auto& name:std::vector<std::string>{c.at("backend")=="star"?"STAR":"hisat2",c.at("backend")=="star"?"STAR":"hisat2-build","samtools","featureCounts"})if(access((bin/name).c_str(),X_OK)!=0)fail("missing executable "+(bin/name).string());
+        for(const auto& name:std::vector<std::string>{c.at("backend")=="star"?"STAR":"hisat2-align-s",c.at("backend")=="star"?"STAR":"hisat2-build-s","samtools","featureCounts"})if(access((bin/name).c_str(),X_OK)!=0)fail("missing executable "+(bin/name).string());
         if(access(c.at("rscript").c_str(),X_OK)!=0)fail("rscript not executable");
         // Include wrapper companions/interpreters in the selected tool directory.
         for(const auto& e:fs::directory_iterator(bin))if(e.is_regular_file())sources.push_back(e.path());
@@ -151,11 +179,37 @@ struct Workflow {
     }
     std::string base_id()const{return "workflow-v1\n"+sha256_file(run/"snapshot"/"STAGE.tsv")+"\n";}
     void stage(const fs::path& dir,const std::string& id,const std::function<void()>& action) {
-        Lock lock(dir.string()+".lock");
-        if(valid(dir,id)){std::cout<<"reuse "<<dir<<'\n';return;}
-        quarantine(dir);std::cout<<"run "<<dir<<'\n';action();verify_sources();
-        write(dir/"generation.txt",std::to_string(std::chrono::system_clock::now().time_since_epoch().count())+"\n");
-        atomic_write(dir/"STAGE.tsv",id+inventory(dir));
+        using Clock=std::chrono::steady_clock;
+        const auto started=Clock::now();
+        auto elapsed=[](auto start){return std::chrono::duration<double>(Clock::now()-start).count();};
+        rusage self_before{},child_before{};
+        getrusage(RUSAGE_SELF,&self_before);getrusage(RUSAGE_CHILDREN,&child_before);
+        double validation=0,execution=0,sources_time=0,publication=0;
+        const auto profile=[&](const std::string& outcome) {
+            rusage self{},child{};getrusage(RUSAGE_SELF,&self);getrusage(RUSAGE_CHILDREN,&child);
+            auto seconds=[](timeval t){return t.tv_sec+t.tv_usec/1e6;};
+            std::ostringstream o;
+            o<<"stage\tstatus\tvalidation_seconds\texecution_seconds\tsource_validation_seconds\tpublication_hash_seconds\twall_seconds\tuser_cpu_seconds\tsystem_cpu_seconds\tprocess_peak_rss_kb\tchildren_peak_rss_kb\tlocal_jobs\tlocal_cpus\tlocal_mem_mb\tlocal_job_mem_mb\n";
+            o<<dir.string()<<'\t'<<outcome<<'\t'<<validation<<'\t'<<execution<<'\t'<<sources_time<<'\t'<<publication<<'\t'<<elapsed(started)<<'\t'
+             <<seconds(self.ru_utime)+seconds(child.ru_utime)-seconds(self_before.ru_utime)-seconds(child_before.ru_utime)<<'\t'
+             <<seconds(self.ru_stime)+seconds(child.ru_stime)-seconds(self_before.ru_stime)-seconds(child_before.ru_stime)<<'\t'
+             <<self.ru_maxrss<<'\t'<<child.ru_maxrss<<'\t'<<local_jobs<<'\t'<<local_cpus<<'\t'<<local_mem_mb<<'\t'<<local_job_mem_mb<<'\n';
+            fs::create_directories(run/"profiles");
+            atomic_write(run/"profiles"/(dir.filename().string()+"-"+std::to_string(getpid())+"-"+std::to_string(started.time_since_epoch().count())+".tsv"),o.str());
+        };
+        try {
+            Lock lock(dir.string()+".lock");
+            auto start=Clock::now();const bool reusable=valid(dir,id);validation=elapsed(start);
+            if(reusable){std::cout<<"reuse "<<dir<<'\n';profile("reused");return;}
+            quarantine(dir);std::cout<<"run "<<dir<<'\n';
+            start=Clock::now();
+            try {action();}catch(...){execution=elapsed(start);throw;}
+            execution=elapsed(start);
+            start=Clock::now();verify_sources();sources_time=elapsed(start);
+            write(dir/"generation.txt",std::to_string(std::chrono::system_clock::now().time_since_epoch().count())+"\n");
+            start=Clock::now();atomic_write(dir/"STAGE.tsv",id+inventory(dir));publication=elapsed(start);
+            profile("executed");
+        }catch(...){try{profile("failed");}catch(...){}throw;}
     }
     std::string cache_key()const {
         // SHA256 of complete index identity is produced via the ordinary file hasher.
@@ -231,7 +285,10 @@ struct Workflow {
     void plan()const {
         std::cout<<"DAG: index -> alignment/counting["<<runs.rows.size()<<"] -> sample merge -> offline R\n";
         for(const auto& [k,v]:c)std::cout<<k<<'\t'<<v<<'\n';
-        std::cout<<"reference_fasta\t"<<fasta<<"\nreference_gtf\t"<<gtf<<"\nlocal stages: serial; BLAS/OpenMP: 1\n";
+        std::cout<<"reference_fasta\t"<<fasta<<"\nreference_gtf\t"<<gtf<<"\nBLAS/OpenMP: 1\n";
+        std::cout<<"local_resolved_cpus\t"<<local_cpus<<"\nlocal_resolved_mem_mb\t"<<local_mem_mb
+                 <<"\nlocal_job_mem_mb\t"<<local_job_mem_mb<<"\nlocal_resolved_jobs\t"<<local_jobs
+                 <<"\nlocal_memory_policy\t"<<(memory_fallback?"serial fallback: total/per-job memory estimate missing":"reservation estimates; not a hard RSS limit")<<'\n';
         std::cout<<table_text(runs);
     }
     void submit() {
@@ -273,7 +330,7 @@ void workflow_command(int argc,char** argv) {
     fs::create_directory(w.run);Lock lock(w.run/"workflow.lock",command=="workflow-task",command=="workflow-task");
     w.snapshot(command!="workflow-task");fs::create_directory(w.run/"align");
     if(command=="workflow-submit"){w.submit();return;}
-    if(command=="workflow-local") {if(fs::exists(w.run/"submission"))fail("run has a submission record; use scheduler tasks, not a local driver");w.index();for(std::size_t i=0;i<w.runs.rows.size();++i)w.alignment(i);w.finish();return;}
+    if(command=="workflow-local") {if(fs::exists(w.run/"submission"))fail("run has a submission record; use scheduler tasks, not a local driver");w.index();run_jobs(w.runs.rows.size(),w.local_jobs,[&](std::size_t i){w.alignment(i);});w.finish();return;}
     if(command!="workflow-task")fail("unknown workflow command");
     const std::string task=argv[3];if(task=="index")w.index();else if(task=="finish")w.finish();else if(task=="array") {
         const char* value=getenv("SLURM_ARRAY_TASK_ID");if(!value)fail("SLURM_ARRAY_TASK_ID is required");std::string s=value;unsigned long i=0;auto [end,ec]=std::from_chars(s.data(),s.data()+s.size(),i);if(ec!=std::errc()||end!=s.data()+s.size())fail("invalid SLURM_ARRAY_TASK_ID");w.alignment(i);

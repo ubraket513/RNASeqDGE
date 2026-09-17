@@ -199,22 +199,77 @@ assert_same <- function(x, y, label) {
   require_true(all(abs(x[keep] - y[keep]) <= 1e-10 + 1e-7 * abs(y[keep])),
                "coefficient does not match requested contrast: ", label)
 }
-run_contrast <- function(data, i, opt, stage, bp) {
+peak_rss_kb <- function() {
+  # Linux VmHWM is the parent R process high-water mark, not aggregate worker RSS.
+  if (!file.exists("/proc/self/status")) return(NA_real_)
+  line <- grep("^VmHWM:", readLines("/proc/self/status", warn = FALSE), value = TRUE)
+  if (length(line) != 1L) return(NA_real_)
+  as.numeric(strsplit(trimws(sub("^VmHWM:", "", line)), "[[:space:]]+")[[1]][1])
+}
+record_timing <- function(profile, stage, contrast_id, model_id, workers, status,
+                          wall_seconds = 0, cpu_seconds = 0) {
+  profile$rows[[length(profile$rows) + 1L]] <- data.frame(
+    stage = stage, contrast_id = contrast_id, model_id = model_id, status = status,
+    workers = workers, wall_seconds = max(0, wall_seconds),
+    cpu_seconds = max(0, cpu_seconds), self_peak_rss_kb = peak_rss_kb())
+}
+profile_call <- function(profile, stage, contrast_id, model_id, workers, expression) {
+  start <- proc.time()
+  value <- force(expression)
+  elapsed <- proc.time() - start
+  record_timing(profile, stage, contrast_id, model_id, workers, "executed",
+                unname(elapsed[["elapsed"]]), sum(elapsed[c("user.self", "sys.self", "user.child", "sys.child")]))
+  value
+}
+model_groups <- function(models) {
+  # Counts and formula are one immutable validated object for this invocation.
+  # Compare the full data frame too: identical matrices alone do not bind factor
+  # levels or unused covariates needed by scientific output and coefficients.
+  representatives <- integer(); groups <- integer(length(models))
+  for (i in seq_along(models)) {
+    compatible <- vapply(representatives, function(j)
+      identical(models[[i]]$matrix, models[[j]]$matrix) &&
+      identical(models[[i]]$data, models[[j]]$data), TRUE)
+    if (any(compatible)) groups[i] <- which(compatible)[1]
+    else { representatives <- c(representatives, i); groups[i] <- length(representatives) }
+  }
+  groups
+}
+run_contrast <- function(data, i, opt, stage, bp, fitted, profile, model_id, reused) {
   contrast <- data$contrasts[i, ]; model <- data$models[[i]]
-  dds <- DESeq2::DESeqDataSetFromMatrix(data$counts, model$data, data$formula)
-  dds <- DESeq2::DESeq(dds, quiet = TRUE, parallel = opt$workers > 1L, BPPARAM = bp)
+  dds <- fitted$dds
+  timed <- function(name, expression)
+    profile_call(profile, name, contrast$contrast_id, model_id, opt$workers, expression)
+  cached <- function(name, expression) {
+    if (exists(name, envir = fitted, inherits = FALSE)) {
+      record_timing(profile, name, contrast$contrast_id, model_id, opt$workers, "reused")
+      get(name, envir = fitted, inherits = FALSE)
+    } else {
+      value <- timed(name, expression)
+      assign(name, value, envir = fitted)
+      value
+    }
+  }
+  if (reused) record_timing(profile, "fit", contrast$contrast_id, model_id, opt$workers, "reused")
   require_true(sum(DESeq2::resultsNames(dds) == model$coefficient) == 1L, "unsupported apeglm coefficient")
-  raw <- DESeq2::results(dds, contrast = c(contrast$factor, contrast$numerator, contrast$denominator),
-                         alpha = data$alpha, parallel = opt$workers > 1L, BPPARAM = bp)
-  coef_result <- DESeq2::results(dds, name = model$coefficient, alpha = data$alpha)
-  require_true(identical(rownames(raw), rownames(coef_result)), "coefficient gene identity mismatch")
-  for (column in names(raw)) assert_same(raw[[column]], coef_result[[column]], column)
+  raw <- timed("results", {
+    result <- DESeq2::results(dds, contrast = c(contrast$factor, contrast$numerator, contrast$denominator),
+                            alpha = data$alpha, parallel = opt$workers > 1L, BPPARAM = bp)
+    coef_result <- DESeq2::results(dds, name = model$coefficient, alpha = data$alpha)
+    require_true(identical(rownames(result), rownames(coef_result)), "coefficient gene identity mismatch")
+    for (column in names(result)) assert_same(result[[column]], coef_result[[column]], column)
+    result
+  })
   # Default apeglm nbinomCR is deterministic; seed also fixes future stochastic internals.
   set.seed(1)
-  shrunk <- DESeq2::lfcShrink(dds, coef = model$coefficient, res = raw, type = "apeglm",
-                             quiet = TRUE, parallel = opt$workers > 1L, BPPARAM = bp)
+  shrunk <- timed("shrinkage", DESeq2::lfcShrink(dds, coef = model$coefficient, res = raw, type = "apeglm",
+                             quiet = TRUE, parallel = opt$workers > 1L, BPPARAM = bp))
   require_true(identical(rownames(raw), rownames(shrunk)), "shrinkage gene identity mismatch")
-  vst <- SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dds, blind = FALSE))
+  vst <- cached("vst", SummarizedExperiment::assay(DESeq2::varianceStabilizingTransformation(dds, blind = FALSE)))
+  normalized <- cached("normalized_counts", DESeq2::counts(dds, normalized = TRUE))
+  pc <- cached("pca", prcomp(t(vst), center = TRUE, scale. = FALSE))
+  distance <- cached("sample_distances", as.matrix(dist(t(vst))))
+  table_start <- proc.time()
   significant <- !is.na(raw$padj) & raw$padj < data$alpha
   root <- file.path(stage, "contrasts", contrast$contrast_id)
   require_true(dir.create(root, recursive = TRUE), "cannot create contrast output")
@@ -229,7 +284,7 @@ run_contrast <- function(data, i, opt, stage, bp) {
   }
   write_tsv(result_table(raw), file.path(root, "results.tsv"))
   write_tsv(result_table(shrunk), file.path(root, "shrunken.tsv"))
-  write_matrix(DESeq2::counts(dds, normalized = TRUE), "gene_id", file.path(root, "normalized_counts.tsv"))
+  write_matrix(normalized, "gene_id", file.path(root, "normalized_counts.tsv"))
   write_matrix(model$matrix, "sample_id", file.path(root, "model_matrix.tsv"))
   stats <- c(contrast_id = contrast$contrast_id, factor = contrast$factor,
     numerator = contrast$numerator, denominator = contrast$denominator, coefficient = model$coefficient,
@@ -240,7 +295,6 @@ run_contrast <- function(data, i, opt, stage, bp) {
   volcano <- data.frame(gene_id = rownames(raw), log2FoldChange = shrunk$log2FoldChange,
     padj = raw$padj, neg_log10_padj = -log10(pmax(raw$padj, .Machine$double.xmin)), significant = significant)
   write_tsv(volcano, file.path(root, "volcano_data.tsv"))
-  pc <- prcomp(t(vst), center = TRUE, scale. = FALSE)
   # Single retained gene still has meaningful PC1, with a zero PC2 placeholder.
   pc2 <- if (ncol(pc$x) >= 2L) pc$x[, 2] else rep(0, nrow(pc$x))
   total_variance <- sum(pc$sdev^2)
@@ -249,12 +303,15 @@ run_contrast <- function(data, i, opt, stage, bp) {
     PC1_variance = variance[1], PC2_variance = if (length(variance) >= 2L) variance[2] else 0,
     model$data, check.names = FALSE)
   write_tsv(pca, file.path(root, "pca_data.tsv"))
-  distance <- as.matrix(dist(t(vst)))
   write_matrix(distance, "sample_id", file.path(root, "sample_distances.tsv"))
   idx <- which(significant)
   idx <- head(idx[order(raw$padj[idx], rownames(raw)[idx], method = "radix")], 50L)
   heat <- vst[idx, , drop = FALSE]
   write_matrix(heat, "gene_id", file.path(root, "heatmap_data.tsv"))
+  table_elapsed <- proc.time() - table_start
+  record_timing(profile, "tables_and_plot_data", contrast$contrast_id, model_id, opt$workers, "executed",
+    unname(table_elapsed[["elapsed"]]), sum(table_elapsed[c("user.self", "sys.self", "user.child", "sys.child")]))
+  plot_start <- proc.time()
   title <- paste(contrast$numerator, "vs", contrast$denominator)
   plot_png(file.path(root, "MA_raw.png"), function() DESeq2::plotMA(raw, alpha = data$alpha, main = title))
   plot_png(file.path(root, "MA_shrunken.png"), function() DESeq2::plotMA(shrunk, alpha = data$alpha, main = title))
@@ -282,19 +339,43 @@ run_contrast <- function(data, i, opt, stage, bp) {
                            main = "Significant genes: VST expression", fontsize_row = 6, silent = FALSE)
   })
   writeLines(capture.output(sessionInfo()), file.path(root, "sessionInfo.txt"))
+  plot_elapsed <- proc.time() - plot_start
+  record_timing(profile, "plots_and_session", contrast$contrast_id, model_id, opt$workers, "executed",
+    unname(plot_elapsed[["elapsed"]]), sum(plot_elapsed[c("user.self", "sys.self", "user.child", "sys.child")]))
 }
 main <- function() {
+  total_start <- proc.time()
   opt <- parse_cli(commandArgs(trailingOnly = TRUE))
   if (is.null(opt)) return(invisible(NULL))
-  data <- validate_inputs(opt)
-  for (package in c("DESeq2", "apeglm", "BiocParallel", "pheatmap"))
-    require_true(requireNamespace(package, quietly = TRUE), "required package unavailable: ", package)
+  profile <- new.env(parent = emptyenv()); profile$rows <- list()
+  data <- profile_call(profile, "validation", "", "", opt$workers, validate_inputs(opt))
+  profile_call(profile, "package_load", "", "", opt$workers, {
+    for (package in c("DESeq2", "apeglm", "BiocParallel", "pheatmap"))
+      require_true(requireNamespace(package, quietly = TRUE), "required package unavailable: ", package)
+  })
   bp <- if (opt$workers == 1L) BiocParallel::SerialParam(RNGseed = 1L) else
     BiocParallel::MulticoreParam(workers = opt$workers, RNGseed = 1L, progressbar = FALSE)
   stage <- tempfile(".p3-stage-", tmpdir = dirname(data$out))
   require_true(dir.create(stage, mode = "0700"), "cannot create exclusive staging directory")
   on.exit(unlink(stage, recursive = TRUE), add = TRUE)
-  for (i in seq_len(nrow(data$contrasts))) run_contrast(data, i, opt, stage, bp)
+  groups <- model_groups(data$models)
+  for (group in unique(groups)) {
+    indices <- which(groups == group); first <- indices[1]
+    model_id <- paste0("model_", group)
+    # Retain only one compatible fitted model at a time, bounding cache memory.
+    fitted <- new.env(parent = emptyenv())
+    fitted$dds <- profile_call(profile, "fit", data$contrasts$contrast_id[first], model_id, opt$workers, {
+      dds <- DESeq2::DESeqDataSetFromMatrix(data$counts, data$models[[first]]$data, data$formula)
+      DESeq2::DESeq(dds, quiet = TRUE, parallel = opt$workers > 1L, BPPARAM = bp)
+    })
+    for (i in indices) run_contrast(data, i, opt, stage, bp, fitted, profile, model_id, i != first)
+    rm(fitted, dds)
+    invisible(gc())
+  }
+  total_elapsed <- proc.time() - total_start
+  record_timing(profile, "total", "", "", opt$workers, "executed",
+    unname(total_elapsed[["elapsed"]]), sum(total_elapsed[c("user.self", "sys.self", "user.child", "sys.child")]))
+  write_tsv(do.call(rbind, profile$rows), file.path(stage, "timings.tsv"))
   require_true(!file.exists(data$out) && !dir.exists(data$out) && !is_symlink(data$out),
                "output appeared during analysis; refusing replacement")
   require_true(file.rename(stage, data$out), "cannot publish staged output")

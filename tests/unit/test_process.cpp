@@ -38,3 +38,26 @@ TEST_CASE("staged env interpreter precedes ambient PATH without parent mutation"
     CHECK(result == wrapper.string());
     std::filesystem::remove_all(root);
 }
+TEST_CASE("bounded fork jobs overlap and propagate worker failure") {
+    char pattern[] = "/tmp/rnaseq-jobs-XXXXXX";
+    const auto root = std::filesystem::path(mkdtemp(pattern));
+    CHECK_NOTHROW(rnaseq::run_jobs(2, 2, [&](std::size_t i) {
+        std::ofstream(root / std::to_string(i)) << "ready";
+        for(int n=0;n<200 && !std::filesystem::exists(root / std::to_string(1-i));++n)usleep(10000);
+        if(!std::filesystem::exists(root / std::to_string(1-i)))throw std::runtime_error("no overlap");
+    }));
+    CHECK(std::filesystem::exists(root / "0"));
+    CHECK(std::filesystem::exists(root / "1"));
+    CHECK_THROWS_AS(rnaseq::run_jobs(2, 2, [&](std::size_t i) {
+        if(i==0) {
+            for(int n=0;n<200 && !std::filesystem::exists(root/"descendant");++n)usleep(10000);
+            if(!std::filesystem::exists(root/"descendant"))throw std::runtime_error("sibling did not start");
+            throw rnaseq::ProcessError("expected failure",17);
+        }
+        rnaseq::run_process({"/bin/sh","-c","trap '' TERM; sleep 200 & echo $! > '"+(root/"descendant").string()+"'; wait"},root/"log");
+    }),rnaseq::ProcessError);
+    std::ifstream input(root/"descendant"); int pid=0;
+    REQUIRE(static_cast<bool>(input>>pid));
+    CHECK(!std::filesystem::exists("/proc/"+std::to_string(pid)));
+    std::filesystem::remove_all(root);
+}

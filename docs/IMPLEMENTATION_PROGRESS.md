@@ -290,8 +290,8 @@ a 30-minute reduced check. Staged six samples × 50,000 prefix reads, with the
 exact NC_000022.11 chromosome from checksum-verified report references (981 genes).
 The local comparison uses two threads per tool, one R worker and two concurrent
 local STAR alignment tasks after resuming a slower pilot. A 10k-read thinning
-attempt failed normalization and was retained. Aim for one completed functional
-comparison in the deadline; three repetitions are deferred. Retain HISAT2 as
+attempt failed normalization and was retained. One functional comparison completed
+within the deadline; three repetitions are deferred. Retain HISAT2 as
 default. Restricted reference/prefix sampling
 cannot establish full-genome scientific or performance equivalence.
 

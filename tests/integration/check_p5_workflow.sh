@@ -7,6 +7,7 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir "$tmp/bin" "$tmp/scheduler"
 cp -R tests/fixtures/p0 "$tmp/p0"
 cp tests/fixtures/p2/genes.tsv "$tmp/genes.tsv"
+cp run_deg_analysis_offline.R "$tmp/run_deg_analysis_offline.R"
 cat > "$tmp/bin/tool" <<'STUB'
 #!/bin/sh
 name=${0##*/}
@@ -15,7 +16,7 @@ if [ "$1" = --version ] || [ "$1" = -v ]; then
  exit 0
 fi
 printf '%s\n' "$name" >> "$EVENTS"
-if [ "$name" = hisat2-build ]; then
+if [ "$name" = hisat2-build-s ]; then
  if [ -n "${BLOCK:-}" ]; then
   trap '' INT TERM
   sleep 200 &
@@ -24,7 +25,23 @@ if [ "$name" = hisat2-build ]; then
  fi
  for prefix; do :; done
  for i in 1 2 3 4 5 6 7 8; do echo index > "$prefix.$i.ht2"; done
-elif [ "$name" = hisat2 ]; then
+elif [ "$name" = hisat2-align-s ]; then
+ if [ -n "${PARALLEL_DIR:-}" ]; then
+  printf 'start %s\n' "$$" >> "$PARALLEL_DIR/events"
+  if [ "${PARALLEL_MODE:-overlap}" = overlap ]; then
+   sleep .2
+  else
+   trap '' INT TERM
+   setsid sleep 200 &
+   printf '%s %s\n' "$$" "$!" > "$PARALLEL_DIR/worker.$$"
+   if [ "$PARALLEL_MODE" = failure ]; then
+    while [ "$(find "$PARALLEL_DIR" -name 'worker.*' | wc -l)" -lt 2 ]; do sleep .01; done
+    if mkdir "$PARALLEL_DIR/first-failure" 2>/dev/null; then exit 19; fi
+   fi
+   wait
+  fi
+  printf 'end %s\n' "$$" >> "$PARALLEL_DIR/events"
+ fi
  while [ "$#" -gt 0 ]; do if [ "$1" = -S ]; then shift; echo sam > "$1"; fi; shift; done
 elif [ "$name" = samtools ]; then
  [ "$1" = quickcheck ] && exit 0
@@ -37,7 +54,7 @@ elif [ "$name" = featureCounts ]; then
 fi
 STUB
 chmod +x "$tmp/bin/tool"
-for tool in hisat2-build hisat2 samtools featureCounts; do cp "$tmp/bin/tool" "$tmp/bin/$tool"; done
+for tool in hisat2-build-s hisat2-align-s samtools featureCounts; do cp "$tmp/bin/tool" "$tmp/bin/$tool"; done
 cat > "$tmp/Rscript" <<'STUB'
 #!/bin/sh
 [ "${OMP_NUM_THREADS:-}" = 1 ] && [ "${OPENBLAS_NUM_THREADS:-}" = 1 ] || exit 71
@@ -55,7 +72,7 @@ printf 'pinned fixture lock\n' > "$tmp/lock"
 export EVENTS="$tmp/events"
 config() {
  local output=$1 run=$2
- printf 'key\tvalue\nsamples\t%s/p0/samples.tsv\nruns\t%s/p0/runs.tsv\nreferences\t%s/p0/references.tsv\nanalysis\t%s/p0/analysis.tsv\ncontrasts\t%s/p0/contrasts.tsv\ngenes\t%s/genes.tsv\nbin_dir\t%s/bin\nrscript\t%s/Rscript\nr_script\t%s/run_deg_analysis_offline.R\ntool_lock\t%s/lock\nr_lock\t%s/lock\nrun_dir\t%s\n' "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$repo" "$tmp" "$tmp" "$run" > "$output"
+ printf 'key\tvalue\nsamples\t%s/p0/samples.tsv\nruns\t%s/p0/runs.tsv\nreferences\t%s/p0/references.tsv\nanalysis\t%s/p0/analysis.tsv\ncontrasts\t%s/p0/contrasts.tsv\ngenes\t%s/genes.tsv\nbin_dir\t%s/bin\nrscript\t%s/Rscript\nr_script\t%s/run_deg_analysis_offline.R\ntool_lock\t%s/lock\nr_lock\t%s/lock\nrun_dir\t%s\n' "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$run" > "$output"
 }
 reject() { if "$@" > "$tmp/reject.log" 2>&1; then echo "unexpected success: $*" >&2; exit 1; fi; }
 config "$tmp/config.tsv" "$tmp/run ; literal"
@@ -64,21 +81,42 @@ reject "$exe" workflow-unknown "$tmp/config.tsv"
 "$exe" workflow-plan "$tmp/config.tsv" > "$tmp/plan"
 test ! -e "$tmp/events" && test ! -e "$tmp/run ; literal"
 grep -q 'threads.*1' "$tmp/plan"
+# Local scheduling resolves CPU and reservation budgets before execution.
+config "$tmp/budget.tsv" "$tmp/budget-run"
+printf 'local_jobs\t4\nlocal_cpus\t4\nlocal_mem_mb\t200\nlocal_job_mem_mb\t100\n' >> "$tmp/budget.tsv"
+SLURM_CPUS_PER_TASK=4 "$exe" workflow-plan "$tmp/budget.tsv" > "$tmp/budget.plan"
+grep -q 'local_resolved_jobs.*2' "$tmp/budget.plan"
+SLURM_CPUS_PER_TASK=1 "$exe" workflow-plan "$tmp/budget.tsv" > "$tmp/budget-one.plan"
+grep -q 'local_resolved_jobs.*1' "$tmp/budget-one.plan"
+SLURM_CPUS_PER_TASK=2 SLURM_MEM_PER_CPU=50 "$exe" workflow-plan "$tmp/budget.tsv" > "$tmp/budget-memory.plan"
+grep -q 'local_resolved_jobs.*1' "$tmp/budget-memory.plan"
+config "$tmp/no-mem.tsv" "$tmp/no-mem"
+printf 'local_jobs\t4\nlocal_cpus\t4\n' >> "$tmp/no-mem.tsv"
+"$exe" workflow-plan "$tmp/no-mem.tsv" > "$tmp/no-mem.plan"
+grep -q 'local_resolved_jobs.*1' "$tmp/no-mem.plan"
+grep -q 'serial fallback' "$tmp/no-mem.plan"
+config "$tmp/too-small.tsv" "$tmp/too-small"
+printf 'local_mem_mb\t50\nlocal_job_mem_mb\t100\n' >> "$tmp/too-small.tsv"
+reject "$exe" workflow-plan "$tmp/too-small.tsv"
+grep -q 'local_job_mem_mb exceeds' "$tmp/reject.log"
 reject env SLURM_CPUS_PER_TASK=0 "$exe" workflow-plan "$tmp/config.tsv"
 R_LIBS=/unwanted R_LIBS_USER=/unwanted R_LIBS_SITE=/unwanted R_HOME=/unwanted LD_LIBRARY_PATH=/unwanted "$exe" workflow-local "$tmp/config.tsv" > "$tmp/local.log"
 run="$tmp/run ; literal"
 test -f "$run/analysis/STAGE.tsv"
+test -d "$run/profiles"
+grep -q executed "$run/profiles/"*.tsv
 grep -q '.staging-.*aligned.bam' "$run/merge/inputs.tsv"
 cp "$EVENTS" "$tmp/prior-events"
 "$exe" workflow-local "$tmp/config.tsv" > "$tmp/resume.log"
 cmp "$EVENTS" "$tmp/prior-events"
+grep -q reused "$run/profiles/"*.tsv
 printf x >> "$tmp/p0/reads/single.fastq"
 reject "$exe" workflow-local "$tmp/config.tsv"
 grep -q 'new run directory' "$tmp/reject.log"
 cp "$repo/tests/fixtures/p0/reads/single.fastq" "$tmp/p0/reads/single.fastq"
-printf '\n' >> "$tmp/bin/hisat2"
+printf '\n' >> "$tmp/bin/hisat2-align-s"
 reject "$exe" workflow-local "$tmp/config.tsv"
-cp "$tmp/bin/tool" "$tmp/bin/hisat2"
+cp "$tmp/bin/tool" "$tmp/bin/hisat2-align-s"
 printf 'threads\t2\n' >> "$tmp/config.tsv"
 reject "$exe" workflow-local "$tmp/config.tsv"
 sed -i '$d' "$tmp/config.tsv"
@@ -90,6 +128,40 @@ rm "$run/merge/STAGE.tsv"
 "$exe" workflow-local "$tmp/config.tsv" > "$tmp/partial.log"
 grep -q 'merge.invalid' "$tmp/partial.log"
 test "$(grep -c '^R$' "$EVENTS")" = 3
+# Two alignment workers overlap, obey reservations, merge deterministically and resume.
+mkdir "$tmp/parallel-tools"
+PARALLEL_DIR="$tmp/parallel-tools" "$exe" workflow-local "$tmp/budget.tsv" > "$tmp/parallel.log"
+awk '$1=="start" {n++; if(n>max)max=n} $1=="end" {n--} END {exit !(max==2 && n==0)}' "$tmp/parallel-tools/events"
+cmp "$tmp/budget-run/merge/counts.tsv" "$run/merge/counts.tsv"
+cp "$tmp/parallel-tools/events" "$tmp/parallel-events"
+PARALLEL_DIR="$tmp/parallel-tools" "$exe" workflow-local "$tmp/budget.tsv" > "$tmp/parallel-resume.log"
+cmp "$tmp/parallel-tools/events" "$tmp/parallel-events"
+# Failure and parent signals kill/reap descendants even after setsid().
+for mode in failure signal signal-int; do
+ mkdir "$tmp/$mode-tools"
+ config "$tmp/$mode-parallel.tsv" "$tmp/$mode-parallel"
+ printf 'local_jobs\t2\nlocal_cpus\t2\nlocal_mem_mb\t200\nlocal_job_mem_mb\t100\n' >> "$tmp/$mode-parallel.tsv"
+ PARALLEL_DIR="$tmp/$mode-tools" PARALLEL_MODE="$mode" "$exe" workflow-local "$tmp/$mode-parallel.tsv" > "$tmp/$mode-parallel.log" 2>&1 &
+ concurrent=$!
+ for _ in $(seq 1 500); do
+  test "$(find "$tmp/$mode-tools" -name 'worker.*' | wc -l)" -ge 2 && break
+  sleep .01
+ done
+ test "$(find "$tmp/$mode-tools" -name 'worker.*' | wc -l)" -ge 2
+ if test "$mode" = signal; then kill -TERM "$concurrent"; fi
+ if test "$mode" = signal-int; then kill -INT "$concurrent"; fi
+ set +e
+ wait "$concurrent"; status=$?
+ set -e
+ if test "$mode" = signal; then test "$status" = 143; elif test "$mode" = signal-int; then test "$status" = 130; else test "$status" = 19; fi
+ for record in "$tmp/$mode-tools"/worker.*; do
+  read -r tool descendant < "$record"
+  test ! -e "/proc/$tool"
+  test ! -e "/proc/$descendant"
+ done
+ test ! -e "$tmp/$mode-parallel/merge/STAGE.tsv"
+ test ! -e "$tmp/$mode-parallel/analysis/STAGE.tsv"
+done
 # Failure diagnostics survive; restart retries only the failed R boundary.
 config "$tmp/fail.tsv" "$tmp/fail"
 reject env R_FAIL=1 "$exe" workflow-local "$tmp/fail.tsv"

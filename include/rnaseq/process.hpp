@@ -1,9 +1,14 @@
 #pragma once
 #include <filesystem>
+#include <functional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 namespace rnaseq {
+// Linux single-threaded driver: bounded fork workers, fail-fast cancellation,
+// SIGINT/SIGTERM forwarding and descendant reaping across process groups.
+// Call only when this process owns no unrelated children.
+void run_jobs(std::size_t count, std::size_t concurrency, const std::function<void(std::size_t)>& action);
 struct ProcessError : std::runtime_error {
     int status;
     ProcessError(const std::string& message, int code) : std::runtime_error(message), status(code) {}

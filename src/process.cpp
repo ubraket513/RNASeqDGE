@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <string_view>
 #include <fcntl.h>
+#include <fstream>
+#include <iostream>
+#include <set>
+#include <sys/prctl.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -22,6 +26,75 @@ struct Signals {
     }
     ~Signals() { sigaction(SIGINT, &old_int, nullptr); sigaction(SIGTERM, &old_term, nullptr); }
 };
+}
+namespace {
+// Freeze parents before walking their children, closing the spawn/kill race.
+// Tools may establish their own process groups, so group signalling alone is
+// insufficient. Linux subreaping lets this driver reap orphaned descendants.
+void stop_tree(pid_t pid) {
+    kill(pid, SIGSTOP);
+    std::error_code error;
+    const auto tasks = std::filesystem::path("/proc") / std::to_string(pid) / "task";
+    for(const auto& task : std::filesystem::directory_iterator(tasks,error)) {
+        std::ifstream children(task.path()/"children"); pid_t child;
+        while(children>>child)stop_tree(child);
+    }
+    kill(pid,SIGKILL);
+}
+void cancel_children() {
+    for(;;) {
+        std::ifstream children("/proc/self/task/"+std::to_string(getpid())+"/children");
+        pid_t pid; while(children>>pid)stop_tree(pid);
+        int status;
+        const auto result=waitpid(-1,&status,WNOHANG);
+        if(result<0 && errno==ECHILD)return;
+        const timespec delay{0,10000000}; nanosleep(&delay,nullptr);
+    }
+}
+struct Subreaper {
+    int previous=0;
+    Subreaper() {
+        if(prctl(PR_GET_CHILD_SUBREAPER,&previous)<0 || prctl(PR_SET_CHILD_SUBREAPER,1)<0)
+            throw std::runtime_error("cannot enable worker descendant reaping");
+    }
+    ~Subreaper(){prctl(PR_SET_CHILD_SUBREAPER,previous);}
+};
+}
+void run_jobs(std::size_t count, std::size_t concurrency, const std::function<void(std::size_t)>& action) {
+    if(!concurrency)throw std::runtime_error("job concurrency must be positive");
+    Signals signals; Subreaper subreaper;
+    std::set<pid_t> active;
+    std::size_t next=0;
+    std::cout.flush(); std::cerr.flush();
+    try {
+        while(next<count || !active.empty()) {
+            if(interrupted)throw ProcessError("local jobs interrupted",128+interrupted);
+            while(next<count && active.size()<concurrency && !interrupted) {
+                const auto task=next++;
+                const pid_t child=fork();
+                if(child<0)throw std::runtime_error("worker fork failed");
+                if(child==0) {
+                    setpgid(0,0); signal(SIGINT,SIG_DFL);signal(SIGTERM,SIG_DFL);
+                    int code=0;
+                    try {action(task);}
+                    catch(const ProcessError& e){std::cerr<<e.what()<<'\n';code=e.status;}
+                    catch(const std::exception& e){std::cerr<<e.what()<<'\n';code=1;}
+                    std::cout.flush();std::cerr.flush();_exit(code);
+                }
+                setpgid(child,child);active.insert(child);
+            }
+            for(auto it=active.begin();it!=active.end();) {
+                int status=0;const auto result=waitpid(*it,&status,WNOHANG);
+                if(result==0 || (result<0 && errno==EINTR)){++it;continue;}
+                if(result<0)throw std::runtime_error("worker waitpid failed");
+                it=active.erase(it);
+                const int code=WIFEXITED(status)?WEXITSTATUS(status):128+WTERMSIG(status);
+                if(code)throw ProcessError("local alignment worker failed with exit "+std::to_string(code),code);
+            }
+            if(!active.empty()){const timespec delay{0,10000000};nanosleep(&delay,nullptr);}
+        }
+        if(interrupted)throw ProcessError("local jobs interrupted",128+interrupted);
+    }catch(...){cancel_children();throw;}
 }
 void run_process(const std::vector<std::string>& argv, const std::filesystem::path& log,
                  const std::filesystem::path& stdout_log) {

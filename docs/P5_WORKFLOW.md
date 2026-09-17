@@ -1,10 +1,10 @@
 # P5 native workflow
 
-`rnaseq workflow-local CONFIG.tsv` executes the serial DAG: index, every technical
-run's alignment/counting, canonical sample merge, then the offline R command.
+`rnaseq workflow-local CONFIG.tsv` executes the DAG: index, bounded parallel technical
+run alignment/counting, canonical sample merge, then the offline R command.
 It never fetches data, installs tools, changes global configuration, or discovers
 study metadata. P1–P4 scientific interfaces remain unchanged. HISAT2 is the default;
-STAR is selected explicitly. Local stages remain serial even under `make -j`.
+STAR is selected explicitly. `make -j` does not control workflow concurrency.
 
 ```sh
 make
@@ -34,9 +34,31 @@ Optional settings are `backend` (`hisat2`/`star`), `threads` (1), `workers` (1),
 `star_sa_bases` (14, range 1–14), and `star_chr_bits` (18, range 1–18). Native threads
 and R workers must each fit `SLURM_CPUS_PER_TASK` and the configured Slurm CPUs.
 BLAS/OpenMP auxiliary worker environment variables are capped at one. Alignment
-and R execute sequentially, so their worker requests are not summed. P4 bounds
+and R execute in separate phases, so their worker requests are not summed. P4 bounds
 samtools sort memory per thread; this is not a total RSS guarantee. Scheduler
 memory and time settings are allocation requests rather than local process limits.
+
+Local scheduling accepts `local_jobs` (maximum simultaneous alignments),
+`local_cpus` (total CPU budget), `local_mem_mb` (total reservation budget), and
+`local_job_mem_mb` (estimated peak memory of one complete alignment/counting job).
+CPU defaults to process affinity and is capped by `SLURM_CPUS_PER_TASK`; an explicit
+`local_cpus` can lower it. R `workers` and alignment `threads` must each fit that
+resolved CPU budget. Slurm `SLURM_MEM_PER_NODE` or `SLURM_MEM_PER_CPU` also caps
+available reservations when present. Positive integers are required.
+
+With both total and per-job memory estimates, resolved concurrency is the minimum
+of the requested jobs (default CPU-derived), CPU budget divided by `threads`, and
+memory budget divided by the per-job estimate. Thus concurrent alignment threads
+and reservations cannot exceed their configured budgets. An oversized single-job
+reservation is rejected. Missing either memory estimate gives a clearly reported
+serial fallback. These estimates are user-supplied reservations, **not an RSS
+limit**: profile representative data before enabling parallelism, and account for
+index size, sorting, counting, and filesystem cache needs. Index and R stages remain
+single DAG phases; the alignment reservation does not estimate R worker memory.
+
+For example, `threads=4`, `local_cpus=16`, `local_jobs=4`, `local_mem_mb=32000`,
+`local_job_mem_mb=12000` resolves to two simultaneous alignments, reserving 8 CPUs
+and 24000 MB. A smaller Slurm CPU allocation can reduce that further.
 
 `workflow-plan` validates and hashes inputs, prints resolved paths, requested
 resource settings and the DAG, and creates no output. Hashing invokes the existing
@@ -86,11 +108,26 @@ build/publication; alignments hold shared locks while using an index. Partial or
 corrupt entries are quarantined. Cache checks verify file hashes, not mtimes.
 A competing cache builder receives `busy lock`; no unsafe fallback index is used.
 
-P4 alignment runs in the workflow process and directly invokes its existing
-process-group supervisor. There is no nested native subprocess group that could
-escape workflow cancellation. SIGINT/SIGTERM terminate active alignment/R tool
-process groups and return 130/143. The cancellation regression includes a tool
-that ignores TERM and owns a sleeping descendant.
+Local alignment jobs run in forked workers, each with the existing P4 process
+supervisor. No C++ threads compete for process-global signal handlers. Stage/cache
+locks and verified resume stay in effect. A failed worker stops its siblings and
+prevents merge/R. The parent traps SIGINT/SIGTERM, stops and kills the descendant
+tree (including tools that changed process groups), and reaps it using Linux
+subreaper support before returning 130/143. Cancellation during index/R retains the
+existing synchronous supervisor. These Linux facilities match the existing
+`/proc/self/exe` runtime requirement.
+
+Each stage attempt adds a TSV under `run_dir/profiles/`, outside hashed scientific
+outputs. It distinguishes `executed`, `reused`, and ordinary `failed` attempts,
+separates stage validation, execution, source revalidation, and publication hashing,
+and records wall time, CPU deltas, requested reservations and resolved concurrency.
+RSS columns are **process-lifetime high-water marks** from Linux `getrusage` for
+self and waited-for children; they are not a summed concurrent peak or stage RSS
+delta. CPU values include waited-for checksum/tool descendants. Snapshot/preflight
+hashing and index validation outside the stage function are not attributed to these
+stage rows. Abruptly killed workers may not publish a profile row; retained logs
+and absent stage markers remain the failure evidence. Profiles are diagnostic and
+do not affect `STAGE.tsv` integrity or scientific tables.
 
 ## Explicit Slurm submission
 
@@ -131,7 +168,9 @@ executed with stubs/local task environments.
 ## Verification
 
 `make check` remains offline and needs no R/Python/alignment installation. Its P5
-shell stubs test the DAG, read-only planning, resource rejection, no-op hash-verified
+shell stubs test CPU/memory resolution, actual bounded overlap, failed-sibling and
+signal cancellation with separately grouped descendants, deterministic merge,
+profiling, the DAG, read-only planning, resource rejection, no-op hash-verified
 resume, source/config/tool invalidation, corruption and partial-output recovery,
 failed R restart, cache reuse/contention, run locking, descendant cancellation,
 Slurm resources/dependencies/array mapping, duplicate-submission rejection and
@@ -146,4 +185,6 @@ P0 technical runs and checks independently expected counts after their merge int
 four canonical samples. It requires the actual too-small-data R failure and absence
 of an R-stage success manifest. P3's independently verified full statistical suite
 supplies the DESeq2/apeglm correctness evidence. A successful full raw-read-to-DE
-study and a live Slurm run remain unvalidated by P5's tiny fixture.
+study and a live Slurm run remain unvalidated by P5's tiny fixture. Subsequently,
+the P6 reduced six-sample chr22 check completed through real R for both backends;
+see [P6_REPORT_DATA.md](P6_REPORT_DATA.md). This does not validate a full-genome study.

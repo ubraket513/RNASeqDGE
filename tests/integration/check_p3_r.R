@@ -58,9 +58,9 @@ if (identical(Sys.getenv("P3_SCHEMA_ONLY"), "1")) {
   run <- invoke(positive)
   if (run$status != 0L) stop("schema regression positive control failed:\n", paste(run$log, collapse = "\n"))
   tables <- list.files(positive, pattern = "\\.tsv$", recursive = TRUE, full.names = TRUE)
-  stopifnot(length(tables) == 18L,
+  stopifnot(length(tables) == 19L,
             all(vapply(tables, function(path) !anyDuplicated(names(read_tsv(path))), TRUE)))
-  cat("PASS: ordinary manifest publishes 18 tables with unique headers\n")
+  cat("PASS: ordinary manifest publishes 18 scientific tables plus root timings with unique headers\n")
   cat("PASS: focused output-schema regressions; artifacts:", work, "\n")
   quit(status = 0L)
 }
