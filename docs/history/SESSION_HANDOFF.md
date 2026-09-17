@@ -2,7 +2,7 @@
 
 > P7 update: the supported launcher is now `run_pipeline.sh plan|local|submit`.
 > Python/Snakemake entry points are retired; compute uses `.deps/runtime-r` and
-> `.deps/runtime-tools`. See [P7 runtime evidence](P7_RUNTIME.md) and the current
+> `.deps/runtime-tools`. See [P7 runtime evidence](../P7_RUNTIME.md) and the current
 > implementation progress. The original handoff below is historical.
 
 > 최신 상태 (2026-09-17 후속 작업): dependency 설치와 P0 local 검증 완료,
@@ -11,8 +11,8 @@
 > offline 검증 및 review 완료. P5 workflow 구현·검증·review 완료. P6 축소 local 비교 완료 (27m15s).
 > 실제 P6 데이터는 report의 GSE80336을 사용한다 (docs/P6_REPORT_DATA.md).
 > 아래는 최초 인계 기록이며, 현재 상태와
-> 다음 작업은 [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md) 및
-> [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)를 먼저 읽는다.
+> 다음 작업은 [IMPLEMENTATION_PROGRESS.md](../IMPLEMENTATION_PROGRESS.md) 및
+> [LOCAL_DEVELOPMENT.md](../LOCAL_DEVELOPMENT.md)를 먼저 읽는다.
 
 2026-09-17 기준. **계획만 작성했으며 migration 구현은 아직 시작하지 않았다.**
 
@@ -70,7 +70,7 @@
 
 ## 다음 세션에 전달할 요청문
 
-> docs/SESSION_HANDOFF.md와 docs/IMPLEMENTATION_PLAN.md를 읽고 RNASeqDGE C++ 전환을
+> docs/history/SESSION_HANDOFF.md와 docs/history/IMPLEMENTATION_PLAN.md를 읽고 RNASeqDGE C++ 전환을
 > P0부터 시작해줘. C++ utilities + CPU STAR + featureCounts + 기존 DESeq2가 목표이고,
 > HISAT2는 검증 baseline으로 유지해. 단계별 완료 gate를 지키고 실제 진행 상황과
 > 검증 결과를 docs/IMPLEMENTATION_PROGRESS.md에 기록해줘.

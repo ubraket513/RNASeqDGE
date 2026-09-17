@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 args <- parse_cli(list(source = NULL, target = NULL), required = c("source", "target"), positional = c("source",
   "target"))
 source <- absolute(args$source)

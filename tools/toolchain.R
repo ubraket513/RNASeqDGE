@@ -1,6 +1,11 @@
 #!/usr/bin/env Rscript
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), if (basename(dirname(sub("^--file=",
-  "", grep("^--file=", commandArgs(), value = TRUE)[1]))) == "integration") "../../tools/lib_helpers.R" else "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  if (basename(dirname(sub(
+    "^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1]
+  ))) == "integration")
+    "../../tools/lib_helpers.R" else "lib_helpers.R"
+))
 packages <- function(kind) read_json(file.path(ROOT, paste0("config/", kind, "-linux-64.provenance.json")))$packages
 check_records <- function(prefix, expected) {
   records <- function(rows) {

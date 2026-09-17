@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 metadata <- function(lines) {
   samples <- list()
   current <- NULL
@@ -18,7 +21,8 @@ metadata <- function(lines) {
         samples[[current]] <- c(samples[[current]], list(condition = parts[1], title = value,
           count_column = paste0(if (parts[1] == "control") "C_" else "BD_", parts[2])))
       } else if (key == "!Sample_relation" && grepl("SRX[0-9]+", value))
-        samples[[current]]$experiment <- regmatches(value, regexpr("SRX[0-9]+", value)) else if (key == "!Sample_characteristics_ch1") {
+        samples[[current]]$experiment <- regmatches(value, regexpr("SRX[0-9]+", value))
+      else if (key == "!Sample_characteristics_ch1") {
         label <- sub(": .*", "", value)
         assert(label %in% names(labels), "unknown GEO covariate")
         samples[[current]][[labels[[label]]]] <- substring(value, nchar(label) + 3L)

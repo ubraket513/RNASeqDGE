@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 # Explicit reduced real-read benchmark: serial jobs and a bounded wall deadline.
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 main <- function() {
   args <- parse_cli(list(inputs = NULL, out = NULL, seconds = "1800", replicates = "3", `index-cache` = NULL,
     `bin-dir` = file.path(ROOT, ".deps/runtime-tools/bin"), rscript = file.path(ROOT, ".deps/runtime-r/bin/Rscript"),
@@ -46,8 +49,10 @@ main <- function() {
       status <- run(c(file.path(ROOT, "tools/run_guarded.sh"), command), log = file.path(out, paste0(name,
         ".log")), check = FALSE)$status
       records[[length(records) + 1L]] <- list(backend = backend, `repeat` = repetition, status = status,
-        wall_seconds = proc.time()[["elapsed"]] - start, command = as.list(command), index_condition = if (!is.null(args[["index-cache"]])) "reuse from pilot" else if (repetition ==
-          1L) "build" else "reuse", cache_condition = "uncontrolled OS cache; no cache eviction requested")
+        wall_seconds = proc.time()[["elapsed"]] - start, command = as.list(command),
+        index_condition = if (!is.null(args[["index-cache"]])) "reuse from pilot"
+          else if (repetition == 1L) "build" else "reuse",
+        cache_condition = "uncontrolled OS cache; no cache eviction requested")
       record_progress()
       cat("END", name, "exit=", status, "\n")
       assert(status == 0L, paste(name, "failed; logs retained"))

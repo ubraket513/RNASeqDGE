@@ -1,7 +1,12 @@
 #!/usr/bin/env Rscript
 # Restricted-reference smoke preparation; never a whole-genome method benchmark.
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), if (basename(dirname(sub("^--file=",
-  "", grep("^--file=", commandArgs(), value = TRUE)[1]))) == "integration") "../../tools/lib_helpers.R" else "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  if (basename(dirname(sub(
+    "^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1]
+  ))) == "integration")
+    "../../tools/lib_helpers.R" else "lib_helpers.R"
+))
 ACCESSION <- "NC_000022.11"
 ASSEMBLY <- "GCF_000001405.40_GRCh38.p14"
 validate_read_stage <- function(stage) {

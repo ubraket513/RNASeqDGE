@@ -2,7 +2,7 @@
 
 작성일: 2026-09-17
 
-> 실행 진행 상황은 [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md)가
+> 실행 진행 상황은 [IMPLEMENTATION_PROGRESS.md](../IMPLEMENTATION_PROGRESS.md)가
 > 최신 기준이다. 아래의 "미시작" 표기는 계획 작성 당시 상태이다.
 
 상태: **계획 수립 완료, 구현 미시작**. 사용자는 이 문서를 먼저 저장하고

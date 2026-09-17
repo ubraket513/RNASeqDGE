@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 # Summarize completed reduced workflows without claiming whole-genome parity.
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 correlation <- function(x, y) if (length(x) < 2L || length(unique(x)) < 2L || length(unique(y)) < 2L) NULL else unname(cor(x,
   y))
 main <- function() {
@@ -139,7 +142,8 @@ main <- function() {
   }
   records$limitations <- as.list(c("Restricted chromosome reference can misassign reads from omitted chromosomes.",
     "Prefix sampling is not random and preserves sequencing-order bias.", "Low-depth DEG/LFC differences are diagnostic, not biological findings.",
-    "OS cache uncontrolled; first run includes indexing, later runs reuse index.", "Timing includes provenance hashes and R; these historical runs do not have independent per-stage resource profiling."))
+    "OS cache uncontrolled; first run includes indexing, later runs reuse index.",
+    "Timing includes provenance hashes and R; these historical runs do not have independent per-stage resource profiling."))
   target <- if (is.null(args$out))
     file.path(root, "comparison.json") else args$out
   write_json(records, target)

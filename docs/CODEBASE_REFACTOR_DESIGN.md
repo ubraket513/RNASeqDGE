@@ -1,6 +1,7 @@
 # Maintainability refactor design
 
-Status: proposed for review, 2026-09-17. This is a behavior-preserving refactor
+Status: approved and implemented; verification recorded in IMPLEMENTATION_PROGRESS.md.
+Design dated 2026-09-17. This is a behavior-preserving refactor
 of the existing C++20/R/Bash workflow in the current main checkout.
 
 ## Findings

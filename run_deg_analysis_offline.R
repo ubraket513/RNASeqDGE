@@ -9,7 +9,8 @@ is_symlink <- function(path) {
 parse_cli <- function(args) {
   allowed <- c("counts", "samples", "analysis", "contrasts", "annotation", "out", "workers")
   if (identical(args, "--help")) {
-    cat("Usage: Rscript --vanilla run_deg_analysis_offline.R --counts FILE --samples FILE\n", "  --analysis FILE --contrasts FILE [--annotation FILE] --out NEW_DIR [--workers N]\n",
+    cat("Usage: Rscript --vanilla run_deg_analysis_offline.R --counts FILE --samples FILE\n",
+      "  --analysis FILE --contrasts FILE [--annotation FILE] --out NEW_DIR [--workers N]\n",
       "OUT must not exist; its parent directory must exist. No network access is used.\n", sep = "")
     return(NULL)
   }

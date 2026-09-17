@@ -1,6 +1,6 @@
 # Implementation progress
 
-Updated 2026-09-17. Latest user checkpoint: `1d140dd` (C++ migration).
+Updated 2026-09-18. Latest user checkpoint: `456d060` (cleanup).
 
 ## Status
 
@@ -24,6 +24,33 @@ records this evidence and links the project MIT license; third-party notices
 remain unchanged.
 
 ## Continuation: dependency installation and implementation
+
+### Maintainability refactor
+
+The approved [design](CODEBASE_REFACTOR_DESIGN.md) is implemented. Workflow
+dispatch remains in `src/workflow.cpp`; private configuration, state/publication
+and execution code lives under `src/workflow/`. GNU Make uses explicit source
+lists and shared recipes with separate test objects. Public commands, script
+paths, data contracts and scientific methods are unchanged.
+
+C++ source follows `.clang-format`; all 15 owned R scripts retain identical parsed
+expressions after readability cleanup. Current guides and historical plans are
+indexed in [docs/README.md](README.md); contributor guidance and an offline native
+GitHub CI workflow are added. CI configuration has been reviewed, but hosted CI
+execution is not claimed before a push.
+
+Verification: native `make -j2 check` passed (37 cases, 228 assertions plus all
+integration gates); the independent multi-contrast R oracle and helper checks
+passed. The real P5 tool gate verified exact merged counts and the expected
+tiny-fixture R failure. Example planning, format checks, 61 local documentation
+links and whitespace checks passed. Independent review found no blockers.
+The full ASan/UBSan gate also passed in the alternate `build/refactor-sanitize`
+directory, including workflow resume, cancellation and Slurm protocol checks.
+It used `-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-pie`
+and linker flags `-fsanitize=address,undefined -no-pie`. Evidence is retained
+under `tests/output/maintainability-*`.
+
+### Historical installation record
 
 The initial-session sections below are retained as historical evidence. The
 missing-dependency blockers there are resolved for the local checks described

@@ -25,12 +25,12 @@ Replace repeated Make compile recipes with explicit source lists and shared rule
 
 ## Verification and completion
 
-- [ ] Existing native baseline passes before refactor.
-- [ ] Native extraction passes full check and targeted sanitizer coverage.
-- [ ] R/helper expressions and focused checks preserve behavior.
-- [ ] Alternate BUILD and documented public launcher verified.
-- [ ] Native CI/config/docs reviewed; links and diff whitespace checked.
-- [ ] Small real installed-tool workflow and independent R oracle pass after integration.
-- [ ] Independent final review; update status with measured evidence and limits.
+- [x] Existing native baseline passes before refactor.
+- [x] Native extraction passes full check and full ASan/UBSan coverage.
+- [x] R/helper expressions and focused checks preserve behavior.
+- [x] Alternate BUILD and documented public launcher verified.
+- [x] Native CI/config/docs reviewed; links and diff whitespace checked.
+- [x] Small real installed-tool workflow and independent R oracle pass after integration.
+- [x] Independent final review; update status with measured evidence and limits.
 
 Ruling: user already approved design and instructed execution; continue without additional planning approval. No automated commits. Use existing relevant tests instead of inventing failing tests for a behavior-preserving extraction.

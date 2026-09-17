@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 generate_p0 <- function(out) {
   dir.create(out, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(out, "reads"), showWarnings = FALSE)

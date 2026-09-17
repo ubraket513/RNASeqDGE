@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 # Parse only the source subset used by these five pinned rendered recipes.
 # Unknown syntax fails; literal full recipes are always retained unchanged.
 recipe_source <- function(path) {
@@ -32,7 +35,8 @@ main <- function() {
   records <- lapply(sort(list.files(file.path(prefix, "conda-meta"), "[.]json$", full.names = TRUE)),
     read_json)
   manifest <- list(format = 1, platform = "linux-64", distribution = "Pinned conda binaries; recipes retained as build provenance, not rebuilt locally.",
-    transitive_dependencies = "config/alignment-linux-64.provenance.json", source_hash_scope = "Upstream archive hashes declared by retained recipes; upstream archives not downloaded by this recorder.",
+    transitive_dependencies = "config/alignment-linux-64.provenance.json",
+    source_hash_scope = "Upstream archive hashes declared by retained recipes; upstream archives not downloaded by this recorder.",
     packages = list(), retained_files = list())
   for (name in c("star", "hisat2", "subread", "samtools", "htslib")) {
     matches <- Filter(function(r) r$name == name, records)

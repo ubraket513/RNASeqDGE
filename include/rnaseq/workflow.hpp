@@ -1,2 +1,4 @@
 #pragma once
-namespace rnaseq { void workflow_command(int argc, char** argv); }
+namespace rnaseq {
+void workflow_command(int argc, char **argv);
+}

@@ -7,7 +7,7 @@ The research report studies bipolar disorder using GSE80336 / PRJNA318642.
 
 ## Build and prepare
 
-Linux, a C++17 compiler, Make, Bash and standard Unix utilities are required.
+Linux, GCC 12+ with C++20, GNU Make, Bash and standard Unix utilities are required.
 Build and run the offline native checks:
 
 ```sh
@@ -105,5 +105,12 @@ are retained.
 
 Project code is available under the [MIT License](LICENSE).
 Third-party code and tools retain their own licenses and notices in
-[`third_party/`](third_party/) and [`vendor/toolchain/`](vendor/toolchain/).
+[`third_party/`](third_party) and [`vendor/toolchain/`](vendor/toolchain).
 Research datasets retain their original terms; the MIT license does not relicense them.
+
+## Development
+
+See [Contributing](CONTRIBUTING.md) for the code layout, style conventions and
+verification commands, and the [documentation index](docs/README.md) for current
+guides and historical plans. Native CI runs the offline `make check` gate;
+installed-tool and R/scientific checks remain opt-in.

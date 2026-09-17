@@ -19,7 +19,7 @@ contrast into an isolated output directory.
 BiocParallel, ggplot2, pheatmap, RColorBrewer. No network, GEOquery, BioMart,
 org.Hs.eg.db, shell commands, or runtime package installation.
 
-**Spec:** `docs/IMPLEMENTATION_PLAN.md` P3/statistical boundary and
+**Spec:** `docs/history/IMPLEMENTATION_PLAN.md` P3/statistical boundary and
 `docs/DATA_CONTRACT_V1.md`.
 
 ## Global constraints
@@ -110,7 +110,7 @@ explicitly switch to the offline command instead of inheriting the filename.
 - Modify: `docs/DATA_CONTRACT_V1.md`
 - Modify: `docs/LOCAL_DEVELOPMENT.md`
 - Modify: `docs/IMPLEMENTATION_PROGRESS.md`
-- Modify: `docs/SESSION_HANDOFF.md`
+- Modify: `docs/history/SESSION_HANDOFF.md`
 - Modify: Serena project memories if stable continuation facts changed.
 
 - [ ] Independently review the R interface for statistical direction, coefficient

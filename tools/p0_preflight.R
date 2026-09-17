@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 # Read-only inventory of the supported native/R toolchain, never installation.
-source(file.path(dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])), "lib_helpers.R"))
+source(file.path(
+  dirname(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])),
+  "lib_helpers.R"
+))
 flags <- list(`g++` = "--version", make = "--version", Rscript = "--version", STAR = "--version", `hisat2-align-s` = "--version",
   `hisat2-build-s` = "--version", featureCounts = "-v", samtools = "--version", `fasterq-dump` = "--version",
   sbatch = "--version")

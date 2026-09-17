@@ -45,13 +45,15 @@ sha256 <- function(path) {
 }
 run <- function(argv, log = NULL, timeout = 0, check = TRUE) {
   assert(length(argv) > 0L, "empty command")
-  result <- suppressWarnings(system2(argv[1], shQuote(argv[-1]), stdout = if (is.null(log))
-    TRUE else log, stderr = if (is.null(log))
-    TRUE else log, timeout = timeout))
+  result <- suppressWarnings(system2(
+    argv[1], shQuote(argv[-1]),
+    stdout = if (is.null(log)) TRUE else log,
+    stderr = if (is.null(log)) TRUE else log,
+    timeout = timeout
+  ))
   status <- if (is.null(log)) {
     x <- attr(result, "status")
-    if (is.null(x))
-      0L else x
+    if (is.null(x)) 0L else x
   } else result
   if (check)
     assert(status == 0L, paste("command failed with exit", status, ":", argv[1], if (!is.null(log))
@@ -80,7 +82,8 @@ parse_cli <- function(defaults = list(), required = character(), flags = charact
       name <- sub("^--", "", key)
       assert(name %in% names(defaults), paste("unknown option", key))
       if (name %in% flags)
-        value <- TRUE else {
+        value <- TRUE
+      else {
         i <- i + 1L
         assert(i <= length(args), paste("missing option value", key))
         value <- args[i]
@@ -91,8 +94,8 @@ parse_cli <- function(defaults = list(), required = character(), flags = charact
     result[[name]] <- value
     i <- i + 1L
   }
-  for (name in required) assert(!is.null(result[[name]]) && nzchar(as.character(result[[name]])), paste("required:",
-    name))
+  for (name in required)
+    assert(!is.null(result[[name]]) && nzchar(as.character(result[[name]])), paste("required:", name))
   result
 }
 clean_environment <- function() list(LD_LIBRARY_PATH = NULL, LD_PRELOAD = NULL, R_HOME = NULL, R_LIBS = NULL,
@@ -101,11 +104,17 @@ clean_environment <- function() list(LD_LIBRARY_PATH = NULL, LD_PRELOAD = NULL, 
 with_environment <- function(values, code) {
   old <- Sys.getenv(names(values), unset = NA_character_)
   on.exit({
-    for (name in names(old)) if (is.na(old[[name]])) Sys.unsetenv(name) else do.call(Sys.setenv,
-      setNames(list(old[[name]]), name))
+    for (name in names(old))
+      if (is.na(old[[name]]))
+        Sys.unsetenv(name)
+      else
+        do.call(Sys.setenv, setNames(list(old[[name]]), name))
   })
-  for (name in names(values)) if (is.null(values[[name]]))
-    Sys.unsetenv(name) else do.call(Sys.setenv, setNames(list(values[[name]]), name))
+  for (name in names(values))
+    if (is.null(values[[name]]))
+      Sys.unsetenv(name)
+    else
+      do.call(Sys.setenv, setNames(list(values[[name]]), name))
   force(code)
 }
 copy_files <- function(files, destination) {
